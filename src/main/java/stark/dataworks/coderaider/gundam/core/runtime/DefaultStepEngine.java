@@ -67,10 +67,10 @@ public class DefaultStepEngine implements IStepEngine
         return runInternal(context, userInput, false);
     }
 
-    // TODO: But how to get streaming response from this method?
-    // For current implementation, we can't get streaming response from this method, we can only get a string output.
     /**
      * Runs the primary execution flow with streamed model deltas.
+     * Streaming chunks are emitted through hooks ({@link HookManager#onModelResponseDelta(ExecutionContext, String)}),
+     * while the returned value remains the terminal run result.
      * @param context The context used by this operation.
      * @param userInput The user input used by this operation.
      * @return The value produced by this operation.
@@ -117,25 +117,20 @@ public class DefaultStepEngine implements IStepEngine
                 )
             );
 
-            // TODO: Why do we use arrays here? I suppose we can use a tiny DTO here because we only want to get some results from the streamed call.
-            StringBuilder streamedContent = new StringBuilder();
-            List<ToolCall> streamedToolCalls = new ArrayList<>();
-            TokenUsage[] streamedTokenUsage = new TokenUsage[1];
-            String[] streamedHandoff = new String[1];
-            LlmResponse[] streamedFinalResponse = new LlmResponse[1];
+            StreamCapture streamCapture = new StreamCapture();
 
-            LlmStreamListener streamListener = getLlmStreamListenerForStepEngine(context, streamedContent, streamedToolCalls, streamedTokenUsage, streamedHandoff, streamedFinalResponse);
+            LlmStreamListener streamListener = getLlmStreamListenerForStepEngine(context, streamCapture);
 
             LlmResponse response = streamModelResponse
                 ? llmClient.chatStream(request, streamListener)
                 : llmClient.chat(request);
 
             LlmResponse effectiveResponse = mergeWithStreamedResponse(response,
-                streamedFinalResponse[0],
-                streamedContent.toString(),
-                streamedToolCalls,
-                streamedHandoff[0],
-                streamedTokenUsage[0]);
+                streamCapture.finalResponse,
+                streamCapture.content.toString(),
+                streamCapture.toolCalls,
+                streamCapture.handoffAgentId,
+                streamCapture.tokenUsage);
 
             context.getTokenUsageTracker().add(effectiveResponse.getTokenUsage());
 
@@ -183,14 +178,14 @@ public class DefaultStepEngine implements IStepEngine
             context.getAgent().definition().getId());
     }
 
-    private LlmStreamListener getLlmStreamListenerForStepEngine(ExecutionContext context, StringBuilder streamedContent, List<ToolCall> streamedToolCalls, TokenUsage[] streamedTokenUsage, String[] streamedHandoff, LlmResponse[] streamedFinalResponse)
+    private LlmStreamListener getLlmStreamListenerForStepEngine(ExecutionContext context, StreamCapture streamCapture)
     {
         return new LlmStreamListener()
         {
             @Override
             public void onDelta(String delta)
             {
-                streamedContent.append(delta);
+                streamCapture.content.append(delta);
                 hooks.onModelResponseDelta(context, delta);
             }
 
@@ -199,7 +194,7 @@ public class DefaultStepEngine implements IStepEngine
             {
                 if (toolCall != null)
                 {
-                    streamedToolCalls.add(toolCall);
+                    streamCapture.toolCalls.add(toolCall);
                 }
             }
 
@@ -208,22 +203,31 @@ public class DefaultStepEngine implements IStepEngine
             {
                 if (tokenUsage != null)
                 {
-                    streamedTokenUsage[0] = tokenUsage;
+                    streamCapture.tokenUsage = tokenUsage;
                 }
             }
 
             @Override
             public void onHandoff(String handoffAgentId)
             {
-                streamedHandoff[0] = handoffAgentId;
+                streamCapture.handoffAgentId = handoffAgentId;
             }
 
             @Override
             public void onCompleted(LlmResponse response)
             {
-                streamedFinalResponse[0] = response;
+                streamCapture.finalResponse = response;
             }
         };
+    }
+
+    private static final class StreamCapture
+    {
+        private final StringBuilder content = new StringBuilder();
+        private final List<ToolCall> toolCalls = new ArrayList<>();
+        private TokenUsage tokenUsage;
+        private String handoffAgentId;
+        private LlmResponse finalResponse;
     }
 
     /**
