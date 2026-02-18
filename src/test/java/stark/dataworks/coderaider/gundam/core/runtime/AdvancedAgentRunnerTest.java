@@ -30,8 +30,8 @@ import stark.dataworks.coderaider.gundam.core.output.OutputValidator;
 import stark.dataworks.coderaider.gundam.core.result.RunItemType;
 import stark.dataworks.coderaider.gundam.core.result.RunResult;
 import stark.dataworks.coderaider.gundam.core.runner.AdvancedAgentRunner;
-import stark.dataworks.coderaider.gundam.core.runner.RunConfig;
-import stark.dataworks.coderaider.gundam.core.runner.RunHooks;
+import stark.dataworks.coderaider.gundam.core.runner.RunConfiguration;
+import stark.dataworks.coderaider.gundam.core.runner.IRunHooks;
 import stark.dataworks.coderaider.gundam.core.session.InMemorySessionStore;
 import stark.dataworks.coderaider.gundam.core.streaming.RunEventPublisher;
 import stark.dataworks.coderaider.gundam.core.tool.ITool;
@@ -67,7 +67,7 @@ class AdvancedAgentRunnerTest
             new OutputValidator(),
             new RunEventPublisher());
 
-        RunResult result = runner.run(new Agent(def), "hello", RunConfig.defaults(), new RunHooks()
+        RunResult result = runner.run(new Agent(def), "hello", RunConfiguration.defaults(), new IRunHooks()
         {
         });
         assertTrue(result.getFinalOutput().contains("Blocked by input guardrail"));
@@ -123,7 +123,7 @@ class AdvancedAgentRunnerTest
             new OutputValidator(),
             new RunEventPublisher());
 
-        RunResult result = runner.run(new Agent(def), "start", new RunConfig(8, "s1", 0.1, 128, "auto", "text", Map.of()), new RunHooks()
+        RunResult result = runner.run(new Agent(def), "start", new RunConfiguration(8, "s1", 0.1, 128, "auto", "text", Map.of()), new IRunHooks()
         {
         });
         assertEquals("done", result.getFinalOutput());
@@ -171,7 +171,7 @@ class AdvancedAgentRunnerTest
             new OutputValidator(),
             new RunEventPublisher());
 
-        RunResult result = runner.run(new Agent(def), "go", RunConfig.defaults(), new RunHooks()
+        RunResult result = runner.run(new Agent(def), "go", RunConfiguration.defaults(), new IRunHooks()
         {
         });
         assertEquals("ok", result.getFinalOutput());
@@ -215,7 +215,7 @@ class AdvancedAgentRunnerTest
             new OutputValidator(),
             new RunEventPublisher());
 
-        RunResult result = runner.runStreamed(new Agent(def), "go", RunConfig.defaults(), new RunHooks()
+        RunResult result = runner.runStreamed(new Agent(def), "go", RunConfiguration.defaults(), new IRunHooks()
         {
         });
 
@@ -294,7 +294,7 @@ class AdvancedAgentRunnerTest
             new OutputValidator(),
             new RunEventPublisher());
 
-        RunResult result = runner.runStreamed(new Agent(def), "go", RunConfig.defaults(), new RunHooks()
+        RunResult result = runner.runStreamed(new Agent(def), "go", RunConfiguration.defaults(), new IRunHooks()
         {
         });
 
@@ -326,7 +326,7 @@ class AdvancedAgentRunnerTest
             new OutputValidator(),
             new RunEventPublisher());
 
-        RunResult result = runner.runStreamed(new Agent(def), "go", RunConfig.defaults(), new RunHooks()
+        RunResult result = runner.runStreamed(new Agent(def), "go", RunConfiguration.defaults(), new IRunHooks()
         {
         });
 

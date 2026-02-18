@@ -14,9 +14,8 @@ import stark.dataworks.coderaider.gundam.core.runerror.RunErrorHandlers;
  * run can be controlled without changing code.
  */
 @Getter
-public class RunConfig
+public class RunConfiguration
 {
-
     /**
      * Hard upper bound for run turns before the runner raises max-turns exceeded.
      */
@@ -72,13 +71,13 @@ public class RunConfig
      * @param responseFormat The response format used by this operation.
      * @param providerOptions The provider options used by this operation.
      */
-    public RunConfig(int maxTurns,
-                     String sessionId,
-                     double temperature,
-                     int maxOutputTokens,
-                     String toolChoice,
-                     String responseFormat,
-                     Map<String, Object> providerOptions)
+    public RunConfiguration(int maxTurns,
+                            String sessionId,
+                            double temperature,
+                            int maxOutputTokens,
+                            String toolChoice,
+                            String responseFormat,
+                            Map<String, Object> providerOptions)
     {
         this(maxTurns, sessionId, temperature, maxOutputTokens, toolChoice, responseFormat, providerOptions, RetryPolicy.none(), new RunErrorHandlers());
     }
@@ -94,14 +93,14 @@ public class RunConfig
      * @param providerOptions Provider-specific options.
      * @param retryPolicy Retry/backoff policy.
      */
-    public RunConfig(int maxTurns,
-                     String sessionId,
-                     double temperature,
-                     int maxOutputTokens,
-                     String toolChoice,
-                     String responseFormat,
-                     Map<String, Object> providerOptions,
-                     RetryPolicy retryPolicy)
+    public RunConfiguration(int maxTurns,
+                            String sessionId,
+                            double temperature,
+                            int maxOutputTokens,
+                            String toolChoice,
+                            String responseFormat,
+                            Map<String, Object> providerOptions,
+                            RetryPolicy retryPolicy)
     {
         this(maxTurns, sessionId, temperature, maxOutputTokens, toolChoice, responseFormat, providerOptions, retryPolicy, new RunErrorHandlers());
     }
@@ -109,15 +108,15 @@ public class RunConfig
     /**
      * Creates a new RunConfig instance.
      */
-    public RunConfig(int maxTurns,
-                     String sessionId,
-                     double temperature,
-                     int maxOutputTokens,
-                     String toolChoice,
-                     String responseFormat,
-                     Map<String, Object> providerOptions,
-                     RetryPolicy retryPolicy,
-                     RunErrorHandlers runErrorHandlers)
+    public RunConfiguration(int maxTurns,
+                            String sessionId,
+                            double temperature,
+                            int maxOutputTokens,
+                            String toolChoice,
+                            String responseFormat,
+                            Map<String, Object> providerOptions,
+                            RetryPolicy retryPolicy,
+                            RunErrorHandlers runErrorHandlers)
     {
         if (maxTurns < 1)
         {
@@ -146,8 +145,8 @@ public class RunConfig
      * Builds a practical default configuration for local development and tests.
      * @return Default run configuration.
      */
-    public static RunConfig defaults()
+    public static RunConfiguration defaults()
     {
-        return new RunConfig(12, null, 0.2, 512, "auto", "text", Map.of());
+        return new RunConfiguration(12, null, 0.2, 512, "auto", "text", Map.of());
     }
 }

@@ -19,7 +19,6 @@ import stark.dataworks.coderaider.gundam.core.result.RunItem;
 @Getter
 public class RunnerContext
 {
-
     /**
      * Accumulated run events emitted during execution.
      */

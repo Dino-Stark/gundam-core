@@ -12,7 +12,6 @@ import stark.dataworks.coderaider.gundam.core.agent.AgentDefinition;
 import stark.dataworks.coderaider.gundam.core.agent.AgentRegistry;
 import stark.dataworks.coderaider.gundam.core.approval.AllowAllToolApprovalPolicy;
 import stark.dataworks.coderaider.gundam.core.context.DefaultContextBuilder;
-import stark.dataworks.coderaider.gundam.core.event.RunEvent;
 import stark.dataworks.coderaider.gundam.core.guardrail.GuardrailEngine;
 import stark.dataworks.coderaider.gundam.core.handoff.HandoffRouter;
 import stark.dataworks.coderaider.gundam.core.policy.RetryPolicy;
@@ -29,8 +28,6 @@ import stark.dataworks.coderaider.gundam.core.result.RunResult;
 import stark.dataworks.coderaider.gundam.core.runerror.RunErrorHandlers;
 import stark.dataworks.coderaider.gundam.core.runerror.RunErrorKind;
 import stark.dataworks.coderaider.gundam.core.runerror.RunErrorHandlerResult;
-import stark.dataworks.coderaider.gundam.core.runner.AdvancedAgentRunner;
-import stark.dataworks.coderaider.gundam.core.runner.RunConfig;
 import stark.dataworks.coderaider.gundam.core.session.InMemorySessionStore;
 import stark.dataworks.coderaider.gundam.core.streaming.RunEventPublisher;
 import stark.dataworks.coderaider.gundam.core.tool.ToolRegistry;
@@ -94,10 +91,10 @@ class McpAndErrorHandlingTest
             new OutputValidator(),
             new RunEventPublisher());
 
-        RunConfig cfg = new RunConfig(2, null, 0.2, 128, "auto", "text", Map.of(),
+        RunConfiguration cfg = new RunConfiguration(2, null, 0.2, 128, "auto", "text", Map.of(),
             new RetryPolicy(1, 0), handlers);
 
-        RunResult result = runner.run(new Agent(def), "hello", cfg, new RunHooks()
+        RunResult result = runner.run(new Agent(def), "hello", cfg, new IRunHooks()
         {
         });
         assertEquals("fallback output", result.getFinalOutput());

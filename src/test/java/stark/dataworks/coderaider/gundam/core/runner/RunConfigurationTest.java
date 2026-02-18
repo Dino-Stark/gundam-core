@@ -7,14 +7,14 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
-class RunConfigTest
+class RunConfigurationTest
 {
 
     @Test
     void rejectsTemperatureOutsideSupportedRange()
     {
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
-            () -> new RunConfig(12, null, 2.5, 256, "auto", "text", Map.of()));
+            () -> new RunConfiguration(12, null, 2.5, 256, "auto", "text", Map.of()));
 
         assertEquals("temperature must be between 0 and 2", error.getMessage());
     }
@@ -23,7 +23,7 @@ class RunConfigTest
     void rejectsMaxTurnsBelowOne()
     {
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
-            () -> new RunConfig(0, null, 0.2, 256, "auto", "text", Map.of()));
+            () -> new RunConfiguration(0, null, 0.2, 256, "auto", "text", Map.of()));
 
         assertEquals("maxTurns must be >= 1", error.getMessage());
     }
@@ -32,7 +32,7 @@ class RunConfigTest
     void rejectsMaxOutputTokensBelowOne()
     {
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
-            () -> new RunConfig(12, null, 0.2, 0, "auto", "text", Map.of()));
+            () -> new RunConfiguration(12, null, 0.2, 0, "auto", "text", Map.of()));
 
         assertEquals("maxOutputTokens must be >= 1", error.getMessage());
     }

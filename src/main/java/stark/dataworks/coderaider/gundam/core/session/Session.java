@@ -1,5 +1,6 @@
 package stark.dataworks.coderaider.gundam.core.session;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 import java.util.Collections;
@@ -13,9 +14,9 @@ import stark.dataworks.coderaider.gundam.core.model.Message;
  * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
  */
 @Getter
+@AllArgsConstructor
 public class Session
 {
-
     /**
      * Internal state for id; used while coordinating runtime behavior.
      */
@@ -25,15 +26,4 @@ public class Session
      * Internal state for messages; used while coordinating runtime behavior.
      */
     private final List<Message> messages;
-
-    /**
-     * Performs session as part of Session runtime responsibilities.
-     * @param id The id used by this operation.
-     * @param messages The messages used by this operation.
-     */
-    public Session(String id, List<Message> messages)
-    {
-        this.id = Objects.requireNonNull(id, "id");
-        this.messages = Collections.unmodifiableList(Objects.requireNonNull(messages, "messages"));
-    }
 }

@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import lombok.AllArgsConstructor;
 import stark.dataworks.coderaider.gundam.core.agent.IAgent;
 import stark.dataworks.coderaider.gundam.core.agent.IAgentRegistry;
 import stark.dataworks.coderaider.gundam.core.approval.ToolApprovalDecision;
@@ -59,9 +60,9 @@ import stark.dataworks.coderaider.gundam.core.tracing.TraceSpan;
  * This runner combines context rendering, model calls, tool execution, guardrails, handoff routing, retry policy,
  * tracing, and event publication so callers can execute a complete OpenAI-Agents-style loop through one entry point.
  */
+@AllArgsConstructor
 public class AdvancedAgentRunner
 {
-
     /**
      * Internal state for llm client; used while coordinating runtime behavior.
      */
@@ -127,76 +128,49 @@ public class AdvancedAgentRunner
      */
     private final RunEventPublisher eventPublisher;
 
-    public AdvancedAgentRunner(ILlmClient llmClient,
-                               IToolRegistry toolRegistry,
-                               IAgentRegistry agentRegistry,
-                               IContextBuilder contextBuilder,
-                               HookManager hookManager,
-                               GuardrailEngine guardrailEngine,
-                               HandoffRouter handoffRouter,
-                               SessionStore sessionStore,
-                               TraceProvider traceProvider,
-                               ToolApprovalPolicy toolApprovalPolicy,
-                               OutputSchemaRegistry outputSchemaRegistry,
-                               OutputValidator outputValidator,
-                               RunEventPublisher eventPublisher)
-    {
-        this.llmClient = llmClient;
-        this.toolRegistry = toolRegistry;
-        this.agentRegistry = agentRegistry;
-        this.contextBuilder = contextBuilder;
-        this.hookManager = hookManager;
-        this.guardrailEngine = guardrailEngine;
-        this.handoffRouter = handoffRouter;
-        this.sessionStore = sessionStore;
-        this.traceProvider = traceProvider;
-        this.toolApprovalPolicy = toolApprovalPolicy;
-        this.outputSchemaRegistry = outputSchemaRegistry;
-        this.outputValidator = outputValidator;
-        this.eventPublisher = eventPublisher;
-    }
-
     /**
      * Executes an agent session until a final answer is produced, a guardrail blocks execution, or limits are reached.
      * @param startingAgent First agent that receives the user request.
      * @param userInput Initial user message.
-     * @param runConfig Run limits, generation options, retry policy, and error-handler configuration.
+     * @param runConfiguration Run limits, generation options, retry policy, and error-handler configuration.
      * @param runHooks Lifecycle callbacks invoked for run/step/tool events.
      * @return Final run output, agent id, usage metrics, emitted events, and timeline items.
      */
-    public RunResult run(IAgent startingAgent, String userInput, RunConfig runConfig, RunHooks runHooks)
+    public RunResult run(IAgent startingAgent, String userInput, RunConfiguration runConfiguration, IRunHooks runHooks)
     {
-        return runInternal(startingAgent, userInput, runConfig, runHooks, false);
+        return runInternal(startingAgent, userInput, runConfiguration, runHooks, false);
     }
 
     /**
      * Executes an agent session with streamed model deltas while preserving the same final result contract.
      * @param startingAgent First agent that receives the user request.
      * @param userInput Initial user message.
-     * @param runConfig Run limits, generation options, retry policy, and error-handler configuration.
+     * @param runConfiguration Run limits, generation options, retry policy, and error-handler configuration.
      * @param runHooks Lifecycle callbacks invoked for run/step/tool events.
      * @return Final run output, agent id, usage metrics, emitted events, and timeline items.
      */
-    public RunResult runStreamed(IAgent startingAgent, String userInput, RunConfig runConfig, RunHooks runHooks)
+    public RunResult runStreamed(IAgent startingAgent, String userInput, RunConfiguration runConfiguration, IRunHooks runHooks)
     {
-        return runInternal(startingAgent, userInput, runConfig, runHooks, true);
+        return runInternal(startingAgent, userInput, runConfiguration, runHooks, true);
     }
 
     /**
      * Executes an agent run either in synchronous mode or in streaming mode based on the supplied flag.
      * @param startingAgent First agent that receives the user request.
      * @param userInput Initial user message.
-     * @param runConfig Run limits, generation options, retry policy, and error-handler configuration.
+     * @param runConfiguration Run limits, generation options, retry policy, and error-handler configuration.
      * @param runHooks Lifecycle callbacks invoked for run/step/tool events.
      * @param streamModelResponse Whether model output should be streamed as delta events.
      * @return Final run output, agent id, usage metrics, emitted events, and timeline items.
      */
-    private RunResult runInternal(IAgent startingAgent, String userInput, RunConfig runConfig, RunHooks runHooks, boolean streamModelResponse)
+    private RunResult runInternal(IAgent startingAgent, String userInput, RunConfiguration runConfiguration, IRunHooks runHooks, boolean streamModelResponse)
     {
+        // TODO: Make this memory configurable.
+        // Options: in-memory, redis, mysql, context-service.
         IAgentMemory memory = new InMemoryAgentMemory();
-        if (runConfig.getSessionId() != null)
+        if (runConfiguration.getSessionId() != null)
         {
-            sessionStore.load(runConfig.getSessionId()).ifPresent(s -> s.getMessages().forEach(memory::append));
+            sessionStore.load(runConfiguration.getSessionId()).ifPresent(s -> s.getMessages().forEach(memory::append));
         }
 
         RunnerContext context = new RunnerContext(startingAgent, memory);
@@ -210,7 +184,7 @@ public class AdvancedAgentRunner
 
         try
         {
-            while (context.getTurns() < runConfig.getMaxTurns())
+            while (context.getTurns() < runConfiguration.getMaxTurns())
             {
                 context.incrementTurns();
                 emit(context, runHooks, RunEventType.STEP_STARTED, Map.of("turn", context.getTurns()));
@@ -225,11 +199,11 @@ public class AdvancedAgentRunner
                 List<Message> messages = contextBuilder.build(context.getCurrentAgent(), context.getMemory(), null);
                 List<ToolDefinition> toolDefinitions = resolveTools(context.getCurrentAgent().definition().getToolNames());
                 LlmRequest request = new LlmRequest(context.getCurrentAgent().definition().getModel(), messages, toolDefinitions,
-                    new LlmOptions(runConfig.getTemperature(), runConfig.getMaxOutputTokens(), runConfig.getToolChoice(), runConfig.getResponseFormat(), runConfig.getProviderOptions()));
+                    new LlmOptions(runConfiguration.getTemperature(), runConfiguration.getMaxOutputTokens(), runConfiguration.getToolChoice(), runConfiguration.getResponseFormat(), runConfiguration.getProviderOptions()));
 
                 emit(context, runHooks, RunEventType.MODEL_REQUESTED, Map.of("model", request.getModel(), "messages", request.getMessages().size()));
                 StreamCapture streamCapture = new StreamCapture();
-                LlmResponse response = invokeModel(request, runConfig, streamModelResponse, streamListenerFor(context, runHooks, streamCapture));
+                LlmResponse response = invokeModel(request, runConfiguration, streamModelResponse, streamListenerForRunner(context, runHooks, streamCapture));
                 LlmResponse effectiveResponse = mergeWithStreamedResponse(response, streamCapture);
                 emit(context, runHooks, RunEventType.MODEL_RESPONDED, Map.of("finishReason", effectiveResponse.getFinishReason()));
                 context.getUsageTracker().add(effectiveResponse.getTokenUsage());
@@ -322,18 +296,18 @@ public class AdvancedAgentRunner
                     }
                 }
 
-                return finalizeResult(context, effectiveResponse.getContent(), runConfig);
+                return finalizeResult(context, effectiveResponse.getContent(), runConfiguration);
             }
 
-            throw new MaxTurnsExceededException(runConfig.getMaxTurns());
+            throw new MaxTurnsExceededException(runConfiguration.getMaxTurns());
         }
         catch (RuntimeException error)
         {
-            return handleError(context, runConfig, error);
+            return handleError(context, runConfiguration, error);
         }
     }
 
-    private LlmStreamListener streamListenerFor(RunnerContext context, RunHooks runHooks, StreamCapture streamCapture)
+    private LlmStreamListener streamListenerForRunner(RunnerContext context, IRunHooks runHooks, StreamCapture streamCapture)
     {
         return new LlmStreamListener()
         {
@@ -441,7 +415,7 @@ public class AdvancedAgentRunner
      * @param error The error used by this operation.
      * @return The value produced by this operation.
      */
-    private RunResult handleError(RunnerContext context, RunConfig config, RuntimeException error)
+    private RunResult handleError(RunnerContext context, RunConfiguration config, RuntimeException error)
     {
         RunErrorKind kind = classify(error);
         RunErrorHandlerResult decision = config.getRunErrorHandlers().get(kind)
@@ -470,12 +444,12 @@ public class AdvancedAgentRunner
 
         if (kind == RunErrorKind.INPUT_GUARDRAIL || kind == RunErrorKind.OUTPUT_GUARDRAIL)
         {
-            emit(context, new RunHooks()
+            emit(context, new IRunHooks()
             {
             }, RunEventType.GUARDRAIL_BLOCKED, Map.of("kind", kind.name(), "message", error.getMessage()));
         }
 
-        emit(context, new RunHooks()
+        emit(context, new IRunHooks()
         {
         }, RunEventType.RUN_FAILED, Map.of("kind", kind.name(), "message", error.getMessage()));
         return finalizeResult(context, finalOutput, config);
@@ -508,7 +482,7 @@ public class AdvancedAgentRunner
      * @return The value produced by this operation.
      */
     private LlmResponse invokeModel(LlmRequest request,
-                                    RunConfig config,
+                                    RunConfiguration config,
                                     boolean streamModelResponse,
                                     LlmStreamListener streamListener)
     {
@@ -574,7 +548,7 @@ public class AdvancedAgentRunner
      * @param type The type used by this operation.
      * @param attributes The attributes used by this operation.
      */
-    private void emit(RunnerContext context, RunHooks hooks, RunEventType type, Map<String, Object> attributes)
+    private void emit(RunnerContext context, IRunHooks hooks, RunEventType type, Map<String, Object> attributes)
     {
         RunEvent event = new RunEvent(type, attributes);
         context.getEvents().add(event);
@@ -589,7 +563,7 @@ public class AdvancedAgentRunner
      * @param config The config used by this operation.
      * @return The value produced by this operation.
      */
-    private RunResult finalizeResult(RunnerContext context, String finalOutput, RunConfig config)
+    private RunResult finalizeResult(RunnerContext context, String finalOutput, RunConfiguration config)
     {
         if (config.getSessionId() != null)
         {
@@ -597,7 +571,7 @@ public class AdvancedAgentRunner
         }
         Map<String, Object> attrs = new HashMap<>();
         attrs.put("finalAgent", context.getCurrentAgent().definition().getId());
-        emit(context, new RunHooks()
+        emit(context, new IRunHooks()
         {
         }, RunEventType.RUN_COMPLETED, attrs);
         return new RunResult(
