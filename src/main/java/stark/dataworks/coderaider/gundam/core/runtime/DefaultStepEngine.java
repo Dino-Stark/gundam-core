@@ -30,7 +30,6 @@ import stark.dataworks.coderaider.gundam.core.tool.ToolDefinition;
 @AllArgsConstructor
 public class DefaultStepEngine implements IStepEngine
 {
-
     /**
      * Internal state for llm client; used while coordinating runtime behavior.
      */
@@ -68,6 +67,8 @@ public class DefaultStepEngine implements IStepEngine
         return runInternal(context, userInput, false);
     }
 
+    // TODO: But how to get streaming response from this method?
+    // For current implementation, we can't get streaming response from this method, we can only get a string output.
     /**
      * Runs the primary execution flow with streamed model deltas.
      * @param context The context used by this operation.
@@ -107,57 +108,23 @@ public class DefaultStepEngine implements IStepEngine
                 currentAgent.definition().getModel(),
                 messages,
                 tools,
-                new LlmOptions(currentAgent.definition().getModelTemperature(),
+                new LlmOptions(
+                    currentAgent.definition().getModelTemperature(),
                     currentAgent.definition().getModelMaxTokens(),
                     currentAgent.definition().getModelToolChoice(),
                     currentAgent.definition().getModelResponseFormat(),
-                    currentAgent.definition().getModelProviderOptions()));
+                    currentAgent.definition().getModelProviderOptions()
+                )
+            );
 
+            // TODO: Why do we use arrays here? I suppose we can use a tiny DTO here because we only want to get some results from the streamed call.
             StringBuilder streamedContent = new StringBuilder();
             List<ToolCall> streamedToolCalls = new ArrayList<>();
             TokenUsage[] streamedTokenUsage = new TokenUsage[1];
             String[] streamedHandoff = new String[1];
             LlmResponse[] streamedFinalResponse = new LlmResponse[1];
 
-            LlmStreamListener streamListener = new LlmStreamListener()
-            {
-                @Override
-                public void onDelta(String delta)
-                {
-                    streamedContent.append(delta);
-                    hooks.onModelResponseDelta(context, delta);
-                }
-
-                @Override
-                public void onToolCall(ToolCall toolCall)
-                {
-                    if (toolCall != null)
-                    {
-                        streamedToolCalls.add(toolCall);
-                    }
-                }
-
-                @Override
-                public void onTokenUsage(TokenUsage tokenUsage)
-                {
-                    if (tokenUsage != null)
-                    {
-                        streamedTokenUsage[0] = tokenUsage;
-                    }
-                }
-
-                @Override
-                public void onHandoff(String handoffAgentId)
-                {
-                    streamedHandoff[0] = handoffAgentId;
-                }
-
-                @Override
-                public void onCompleted(LlmResponse response)
-                {
-                    streamedFinalResponse[0] = response;
-                }
-            };
+            LlmStreamListener streamListener = getLlmStreamListenerForStepEngine(context, streamedContent, streamedToolCalls, streamedTokenUsage, streamedHandoff, streamedFinalResponse);
 
             LlmResponse response = streamModelResponse
                 ? llmClient.chatStream(request, streamListener)
@@ -214,6 +181,49 @@ public class DefaultStepEngine implements IStepEngine
             "Stopped: max steps reached",
             context.getTokenUsageTracker().snapshot(),
             context.getAgent().definition().getId());
+    }
+
+    private LlmStreamListener getLlmStreamListenerForStepEngine(ExecutionContext context, StringBuilder streamedContent, List<ToolCall> streamedToolCalls, TokenUsage[] streamedTokenUsage, String[] streamedHandoff, LlmResponse[] streamedFinalResponse)
+    {
+        return new LlmStreamListener()
+        {
+            @Override
+            public void onDelta(String delta)
+            {
+                streamedContent.append(delta);
+                hooks.onModelResponseDelta(context, delta);
+            }
+
+            @Override
+            public void onToolCall(ToolCall toolCall)
+            {
+                if (toolCall != null)
+                {
+                    streamedToolCalls.add(toolCall);
+                }
+            }
+
+            @Override
+            public void onTokenUsage(TokenUsage tokenUsage)
+            {
+                if (tokenUsage != null)
+                {
+                    streamedTokenUsage[0] = tokenUsage;
+                }
+            }
+
+            @Override
+            public void onHandoff(String handoffAgentId)
+            {
+                streamedHandoff[0] = handoffAgentId;
+            }
+
+            @Override
+            public void onCompleted(LlmResponse response)
+            {
+                streamedFinalResponse[0] = response;
+            }
+        };
     }
 
     /**
