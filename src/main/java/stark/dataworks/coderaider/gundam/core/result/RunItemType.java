@@ -1,6 +1,7 @@
 package stark.dataworks.coderaider.gundam.core.result;
 
-public enum RunItemType {
+public enum RunItemType
+{
     USER_MESSAGE,
     ASSISTANT_MESSAGE,
     TOOL_CALL,

@@ -3,20 +3,25 @@ package stark.dataworks.coderaider.gundam.core.tracing;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.concurrent.atomic.AtomicInteger;
+
 import org.junit.jupiter.api.Test;
 import stark.dataworks.coderaider.gundam.core.tracing.ProcessorTraceProvider;
 import stark.dataworks.coderaider.gundam.core.tracing.TraceProvider;
 import stark.dataworks.coderaider.gundam.core.tracing.TraceSpan;
 import stark.dataworks.coderaider.gundam.core.tracing.processor.TracingProcessors;
 
-class TracingProcessorTest {
+class TracingProcessorTest
+{
 
     @Test
-    void processorTraceProviderEmitsEvents() {
+    void processorTraceProviderEmitsEvents()
+    {
         TracingProcessors processors = new TracingProcessors();
         AtomicInteger count = new AtomicInteger();
-        processors.add(event -> {
-            if ("test.span".equals(event.spanName())) {
+        processors.add(event ->
+        {
+            if ("test.span".equals(event.spanName()))
+            {
                 count.incrementAndGet();
             }
         });

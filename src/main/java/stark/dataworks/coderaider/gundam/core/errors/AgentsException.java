@@ -1,11 +1,14 @@
 package stark.dataworks.coderaider.gundam.core.errors;
 
-public class AgentsException extends RuntimeException {
-    public AgentsException(String message) {
+public class AgentsException extends RuntimeException
+{
+    public AgentsException(String message)
+    {
         super(message);
     }
 
-    public AgentsException(String message, Throwable cause) {
+    public AgentsException(String message, Throwable cause)
+    {
         super(message, cause);
     }
 }

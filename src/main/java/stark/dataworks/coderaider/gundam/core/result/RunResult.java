@@ -3,10 +3,12 @@ package stark.dataworks.coderaider.gundam.core.result;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+
 import stark.dataworks.coderaider.gundam.core.event.RunEvent;
 import stark.dataworks.coderaider.gundam.core.metrics.TokenUsage;
 
-public class RunResult {
+public class RunResult
+{
     private final String finalOutput;
     private final String finalAgentId;
     private final TokenUsage usage;
@@ -17,7 +19,8 @@ public class RunResult {
                      String finalAgentId,
                      TokenUsage usage,
                      List<RunItem> items,
-                     List<RunEvent> events) {
+                     List<RunEvent> events)
+    {
         this.finalOutput = finalOutput == null ? "" : finalOutput;
         this.finalAgentId = Objects.requireNonNull(finalAgentId, "finalAgentId");
         this.usage = Objects.requireNonNull(usage, "usage");
@@ -25,23 +28,28 @@ public class RunResult {
         this.events = Collections.unmodifiableList(Objects.requireNonNull(events, "events"));
     }
 
-    public String getFinalOutput() {
+    public String getFinalOutput()
+    {
         return finalOutput;
     }
 
-    public String getFinalAgentId() {
+    public String getFinalAgentId()
+    {
         return finalAgentId;
     }
 
-    public TokenUsage getUsage() {
+    public TokenUsage getUsage()
+    {
         return usage;
     }
 
-    public List<RunItem> getItems() {
+    public List<RunItem> getItems()
+    {
         return items;
     }
 
-    public List<RunEvent> getEvents() {
+    public List<RunEvent> getEvents()
+    {
         return events;
     }
 }

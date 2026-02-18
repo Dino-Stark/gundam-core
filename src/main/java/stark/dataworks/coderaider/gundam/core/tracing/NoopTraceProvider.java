@@ -1,15 +1,20 @@
 package stark.dataworks.coderaider.gundam.core.tracing;
 
-public class NoopTraceProvider implements TraceProvider {
+public class NoopTraceProvider implements TraceProvider
+{
     @Override
-    public TraceSpan startSpan(String name) {
-        return new TraceSpan() {
+    public TraceSpan startSpan(String name)
+    {
+        return new TraceSpan()
+        {
             @Override
-            public void annotate(String key, String value) {
+            public void annotate(String key, String value)
+            {
             }
 
             @Override
-            public void close() {
+            public void close()
+            {
             }
         };
     }

@@ -3,7 +3,8 @@ package stark.dataworks.coderaider.gundam.core.mcp;
 import java.util.List;
 import java.util.Map;
 
-public interface McpServerClient {
+public interface McpServerClient
+{
     List<McpToolDescriptor> listTools(McpServerConfig config);
 
     String callTool(McpServerConfig config, String toolName, Map<String, Object> args);

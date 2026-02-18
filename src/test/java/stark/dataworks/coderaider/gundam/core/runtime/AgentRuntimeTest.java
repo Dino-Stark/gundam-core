@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import org.junit.jupiter.api.Test;
 import stark.dataworks.coderaider.gundam.core.agent.Agent;
 import stark.dataworks.coderaider.gundam.core.agent.AgentDefinition;
@@ -31,23 +32,28 @@ import stark.dataworks.coderaider.gundam.core.tool.ToolDefinition;
 import stark.dataworks.coderaider.gundam.core.tool.ToolParameterSchema;
 import stark.dataworks.coderaider.gundam.core.tool.ToolRegistry;
 
-class AgentRuntimeTest {
+class AgentRuntimeTest
+{
 
     @Test
-    void executesToolCallThenReturnsFinalMessageAndTracksTokens() {
+    void executesToolCallThenReturnsFinalMessageAndTracksTokens()
+    {
         AgentDefinition definition = definition("planner", "weather-model", List.of("weather"));
         AgentRegistry agentRegistry = new AgentRegistry();
         agentRegistry.register(new Agent(definition));
 
         ToolRegistry tools = new ToolRegistry();
-        tools.register(new ITool() {
+        tools.register(new ITool()
+        {
             @Override
-            public ToolDefinition definition() {
+            public ToolDefinition definition()
+            {
                 return new ToolDefinition("weather", "get weather", List.of(new ToolParameterSchema("city", "string", true, "")));
             }
 
             @Override
-            public String execute(Map<String, Object> input) {
+            public String execute(Map<String, Object> input)
+            {
                 return "Sunny in " + input.get("city");
             }
         });
@@ -59,9 +65,11 @@ class AgentRuntimeTest {
 
         HookManager hookManager = new HookManager();
         AtomicInteger beforeToolCalls = new AtomicInteger();
-        hookManager.registerToolHook(new IToolHook() {
+        hookManager.registerToolHook(new IToolHook()
+        {
             @Override
-            public void beforeTool(String toolName, Map<String, Object> args) {
+            public void beforeTool(String toolName, Map<String, Object> args)
+            {
                 beforeToolCalls.incrementAndGet();
             }
         });
@@ -76,20 +84,24 @@ class AgentRuntimeTest {
     }
 
     @Test
-    void supportsAgentHandoff() {
+    void supportsAgentHandoff()
+    {
         AgentDefinition planner = definition("planner", "model-a", List.of());
         AgentDefinition specialist = definition("specialist", "model-b", List.of());
         AgentRegistry registry = new AgentRegistry();
         registry.register(new Agent(planner));
         registry.register(new Agent(specialist));
 
-        ILlmClient scripted = new ILlmClient() {
+        ILlmClient scripted = new ILlmClient()
+        {
             int callCount = 0;
 
             @Override
-            public LlmResponse chat(LlmRequest request) {
+            public LlmResponse chat(LlmRequest request)
+            {
                 callCount++;
-                if (callCount == 1) {
+                if (callCount == 1)
+                {
                     return new LlmResponse("handoff", List.of(), "specialist", new TokenUsage(1, 1));
                 }
                 return new LlmResponse("specialist answer", List.of(), null, new TokenUsage(2, 2));
@@ -104,7 +116,8 @@ class AgentRuntimeTest {
     }
 
     @Test
-    void loadsDeclarativeDefinitionFromJson() {
+    void loadsDeclarativeDefinitionFromJson()
+    {
         String json = """
             {
               "id":"agent-1",
@@ -123,7 +136,8 @@ class AgentRuntimeTest {
     }
 
     @Test
-    void invokesAgentHooksAndStopsAtMaxSteps() {
+    void invokesAgentHooksAndStopsAtMaxSteps()
+    {
         AgentDefinition definition = definition("loop", "model", List.of());
         definition.setMaxSteps(2);
 
@@ -132,23 +146,28 @@ class AgentRuntimeTest {
 
         ILlmClient neverFinal = request -> new LlmResponse("", List.of(new ToolCall("noop", Map.of())), null, new TokenUsage(1, 1));
         ToolRegistry tools = new ToolRegistry();
-        tools.register(new ITool() {
+        tools.register(new ITool()
+        {
             @Override
-            public ToolDefinition definition() {
+            public ToolDefinition definition()
+            {
                 return new ToolDefinition("noop", "", List.of());
             }
 
             @Override
-            public String execute(Map<String, Object> input) {
+            public String execute(Map<String, Object> input)
+            {
                 return "ok";
             }
         });
 
         HookManager hooks = new HookManager();
         AtomicInteger stepCounter = new AtomicInteger();
-        hooks.registerAgentHook(new IAgentHook() {
+        hooks.registerAgentHook(new IAgentHook()
+        {
             @Override
-            public void onStep(ExecutionContext context) {
+            public void onStep(ExecutionContext context)
+            {
                 stepCounter.incrementAndGet();
             }
         });
@@ -160,7 +179,8 @@ class AgentRuntimeTest {
         assertEquals(2, stepCounter.get());
     }
 
-    private static AgentDefinition definition(String id, String model, List<String> toolNames) {
+    private static AgentDefinition definition(String id, String model, List<String> toolNames)
+    {
         AgentDefinition definition = new AgentDefinition();
         definition.setId(id);
         definition.setName(id);

@@ -2,16 +2,19 @@ package stark.dataworks.coderaider.gundam.core.agent;
 
 import java.util.Objects;
 
-public class Agent implements IAgent {
+public class Agent implements IAgent
+{
     private final AgentDefinition definition;
 
-    public Agent(AgentDefinition definition) {
+    public Agent(AgentDefinition definition)
+    {
         definition.validate();
         this.definition = Objects.requireNonNull(definition, "definition");
     }
 
     @Override
-    public AgentDefinition definition() {
+    public AgentDefinition definition()
+    {
         return definition;
     }
 }

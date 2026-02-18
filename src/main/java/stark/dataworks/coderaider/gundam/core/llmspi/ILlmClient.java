@@ -1,5 +1,6 @@
 package stark.dataworks.coderaider.gundam.core.llmspi;
 
-public interface ILlmClient {
+public interface ILlmClient
+{
     LlmResponse chat(LlmRequest request);
 }

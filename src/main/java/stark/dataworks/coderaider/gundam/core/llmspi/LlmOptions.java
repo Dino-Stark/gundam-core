@@ -2,14 +2,16 @@ package stark.dataworks.coderaider.gundam.core.llmspi;
 
 import java.util.Map;
 
-public class LlmOptions {
+public class LlmOptions
+{
     private final double temperature;
     private final int maxTokens;
     private final String toolChoice;
     private final String responseFormat;
     private final Map<String, Object> providerOptions;
 
-    public LlmOptions(double temperature, int maxTokens) {
+    public LlmOptions(double temperature, int maxTokens)
+    {
         this(temperature, maxTokens, "auto", "text", Map.of());
     }
 
@@ -17,7 +19,8 @@ public class LlmOptions {
                       int maxTokens,
                       String toolChoice,
                       String responseFormat,
-                      Map<String, Object> providerOptions) {
+                      Map<String, Object> providerOptions)
+    {
         this.temperature = temperature;
         this.maxTokens = maxTokens;
         this.toolChoice = toolChoice == null ? "auto" : toolChoice;
@@ -25,23 +28,28 @@ public class LlmOptions {
         this.providerOptions = providerOptions == null ? Map.of() : Map.copyOf(providerOptions);
     }
 
-    public double getTemperature() {
+    public double getTemperature()
+    {
         return temperature;
     }
 
-    public int getMaxTokens() {
+    public int getMaxTokens()
+    {
         return maxTokens;
     }
 
-    public String getToolChoice() {
+    public String getToolChoice()
+    {
         return toolChoice;
     }
 
-    public String getResponseFormat() {
+    public String getResponseFormat()
+    {
         return responseFormat;
     }
 
-    public Map<String, Object> getProviderOptions() {
+    public Map<String, Object> getProviderOptions()
+    {
         return providerOptions;
     }
 }

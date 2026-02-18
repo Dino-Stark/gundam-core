@@ -1,15 +1,18 @@
 package stark.dataworks.coderaider.gundam.core.metrics;
 
-public class TokenUsageTracker {
+public class TokenUsageTracker
+{
     private int input;
     private int output;
 
-    public void add(TokenUsage usage) {
+    public void add(TokenUsage usage)
+    {
         this.input += usage.getInputTokens();
         this.output += usage.getOutputTokens();
     }
 
-    public TokenUsage snapshot() {
+    public TokenUsage snapshot()
+    {
         return new TokenUsage(input, output);
     }
 }

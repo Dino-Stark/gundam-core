@@ -1,6 +1,7 @@
 package stark.dataworks.coderaider.gundam.core.event;
 
-public enum RunEventType {
+public enum RunEventType
+{
     RUN_STARTED,
     STEP_STARTED,
     MODEL_REQUESTED,

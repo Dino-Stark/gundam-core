@@ -5,10 +5,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+
 import stark.dataworks.coderaider.gundam.core.metrics.TokenUsage;
 import stark.dataworks.coderaider.gundam.core.model.ToolCall;
 
-public class LlmResponse {
+public class LlmResponse
+{
     private final String content;
     private final List<ToolCall> toolCalls;
     private final String handoffAgentId;
@@ -16,7 +18,8 @@ public class LlmResponse {
     private final String finishReason;
     private final Map<String, Object> structuredOutput;
 
-    public LlmResponse(String content, List<ToolCall> toolCalls, String handoffAgentId, TokenUsage tokenUsage) {
+    public LlmResponse(String content, List<ToolCall> toolCalls, String handoffAgentId, TokenUsage tokenUsage)
+    {
         this(content, toolCalls, handoffAgentId, tokenUsage, "stop", Map.of());
     }
 
@@ -25,7 +28,8 @@ public class LlmResponse {
                        String handoffAgentId,
                        TokenUsage tokenUsage,
                        String finishReason,
-                       Map<String, Object> structuredOutput) {
+                       Map<String, Object> structuredOutput)
+    {
         this.content = content == null ? "" : content;
         this.toolCalls = Collections.unmodifiableList(Objects.requireNonNull(toolCalls, "toolCalls"));
         this.handoffAgentId = handoffAgentId;
@@ -34,31 +38,38 @@ public class LlmResponse {
         this.structuredOutput = Collections.unmodifiableMap(structuredOutput == null ? Map.of() : structuredOutput);
     }
 
-    public String getContent() {
+    public String getContent()
+    {
         return content;
     }
 
-    public List<ToolCall> getToolCalls() {
+    public List<ToolCall> getToolCalls()
+    {
         return toolCalls;
     }
 
-    public Optional<String> getHandoffAgentId() {
+    public Optional<String> getHandoffAgentId()
+    {
         return Optional.ofNullable(handoffAgentId);
     }
 
-    public TokenUsage getTokenUsage() {
+    public TokenUsage getTokenUsage()
+    {
         return tokenUsage;
     }
 
-    public String getFinishReason() {
+    public String getFinishReason()
+    {
         return finishReason;
     }
 
-    public Map<String, Object> getStructuredOutput() {
+    public Map<String, Object> getStructuredOutput()
+    {
         return structuredOutput;
     }
 
-    public boolean isFinal() {
+    public boolean isFinal()
+    {
         return toolCalls.isEmpty() && handoffAgentId == null;
     }
 }

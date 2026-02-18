@@ -1,10 +1,12 @@
 package stark.dataworks.coderaider.gundam.core.runner;
 
 import java.util.Map;
+
 import stark.dataworks.coderaider.gundam.core.policy.RetryPolicy;
 import stark.dataworks.coderaider.gundam.core.runerror.RunErrorHandlers;
 
-public class RunConfig {
+public class RunConfig
+{
     private final int maxTurns;
     private final String sessionId;
     private final double temperature;
@@ -21,7 +23,8 @@ public class RunConfig {
                      int maxOutputTokens,
                      String toolChoice,
                      String responseFormat,
-                     Map<String, Object> providerOptions) {
+                     Map<String, Object> providerOptions)
+    {
         this(maxTurns, sessionId, temperature, maxOutputTokens, toolChoice, responseFormat, providerOptions, RetryPolicy.none(), new RunErrorHandlers());
     }
 
@@ -32,7 +35,8 @@ public class RunConfig {
                      String toolChoice,
                      String responseFormat,
                      Map<String, Object> providerOptions,
-                     RetryPolicy retryPolicy) {
+                     RetryPolicy retryPolicy)
+    {
         this(maxTurns, sessionId, temperature, maxOutputTokens, toolChoice, responseFormat, providerOptions, retryPolicy, new RunErrorHandlers());
     }
 
@@ -44,7 +48,8 @@ public class RunConfig {
                      String responseFormat,
                      Map<String, Object> providerOptions,
                      RetryPolicy retryPolicy,
-                     RunErrorHandlers runErrorHandlers) {
+                     RunErrorHandlers runErrorHandlers)
+    {
         this.maxTurns = maxTurns;
         this.sessionId = sessionId;
         this.temperature = temperature;
@@ -56,43 +61,53 @@ public class RunConfig {
         this.runErrorHandlers = runErrorHandlers == null ? new RunErrorHandlers() : runErrorHandlers;
     }
 
-    public static RunConfig defaults() {
+    public static RunConfig defaults()
+    {
         return new RunConfig(12, null, 0.2, 512, "auto", "text", Map.of());
     }
 
-    public int getMaxTurns() {
+    public int getMaxTurns()
+    {
         return maxTurns;
     }
 
-    public String getSessionId() {
+    public String getSessionId()
+    {
         return sessionId;
     }
 
-    public double getTemperature() {
+    public double getTemperature()
+    {
         return temperature;
     }
 
-    public int getMaxOutputTokens() {
+    public int getMaxOutputTokens()
+    {
         return maxOutputTokens;
     }
 
-    public String getToolChoice() {
+    public String getToolChoice()
+    {
         return toolChoice;
     }
 
-    public String getResponseFormat() {
+    public String getResponseFormat()
+    {
         return responseFormat;
     }
 
-    public Map<String, Object> getProviderOptions() {
+    public Map<String, Object> getProviderOptions()
+    {
         return providerOptions;
     }
 
-    public RetryPolicy getRetryPolicy() {
+    public RetryPolicy getRetryPolicy()
+    {
         return retryPolicy;
     }
 
-    public RunErrorHandlers getRunErrorHandlers() {
+    public RunErrorHandlers getRunErrorHandlers()
+    {
         return runErrorHandlers;
     }
 }

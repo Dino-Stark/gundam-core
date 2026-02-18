@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Map;
+
 import org.junit.jupiter.api.Test;
 import stark.dataworks.coderaider.gundam.core.agent.Agent;
 import stark.dataworks.coderaider.gundam.core.agent.AgentDefinition;
@@ -34,10 +35,12 @@ import stark.dataworks.coderaider.gundam.core.tool.ToolDefinition;
 import stark.dataworks.coderaider.gundam.core.tool.ToolRegistry;
 import stark.dataworks.coderaider.gundam.core.tracing.NoopTraceProvider;
 
-class AdvancedAgentRunnerTest {
+class AdvancedAgentRunnerTest
+{
 
     @Test
-    void blocksByInputGuardrail() {
+    void blocksByInputGuardrail()
+    {
         GuardrailEngine guardrails = new GuardrailEngine();
         guardrails.registerInput((ctx, input) -> GuardrailDecision.deny("forbidden"));
 
@@ -60,13 +63,16 @@ class AdvancedAgentRunnerTest {
             new OutputValidator(),
             new RunEventPublisher());
 
-        RunResult result = runner.run(new Agent(def), "hello", RunConfig.defaults(), new RunHooks() {});
+        RunResult result = runner.run(new Agent(def), "hello", RunConfig.defaults(), new RunHooks()
+        {
+        });
         assertTrue(result.getFinalOutput().contains("Blocked by input guardrail"));
         assertTrue(result.getEvents().stream().anyMatch(e -> e.getType() == RunEventType.GUARDRAIL_BLOCKED));
     }
 
     @Test
-    void executesToolAndStoresSession() {
+    void executesToolAndStoresSession()
+    {
         AgentDefinition def = baseDef("agent");
         def.setToolNames(List.of("echo"));
         def.setMaxSteps(4);
@@ -75,22 +81,27 @@ class AdvancedAgentRunnerTest {
         agents.register(new Agent(def));
 
         ToolRegistry tools = new ToolRegistry();
-        tools.register(new ITool() {
+        tools.register(new ITool()
+        {
             @Override
-            public ToolDefinition definition() {
+            public ToolDefinition definition()
+            {
                 return new ToolDefinition("echo", "", List.of());
             }
 
             @Override
-            public String execute(Map<String, Object> input) {
+            public String execute(Map<String, Object> input)
+            {
                 return "ok";
             }
         });
 
         InMemorySessionStore sessions = new InMemorySessionStore();
         AdvancedAgentRunner runner = new AdvancedAgentRunner(
-            req -> {
-                if (req.getMessages().stream().noneMatch(m -> m.getContent().contains("echo: ok"))) {
+            req ->
+            {
+                if (req.getMessages().stream().noneMatch(m -> m.getContent().contains("echo: ok")))
+                {
                     return new LlmResponse("", List.of(new ToolCall("echo", Map.of())), null, new TokenUsage(1, 1));
                 }
                 return new LlmResponse("done", List.of(), null, new TokenUsage(2, 2));
@@ -108,14 +119,17 @@ class AdvancedAgentRunnerTest {
             new OutputValidator(),
             new RunEventPublisher());
 
-        RunResult result = runner.run(new Agent(def), "start", new RunConfig(8, "s1", 0.1, 128, "auto", "text", Map.of()), new RunHooks() {});
+        RunResult result = runner.run(new Agent(def), "start", new RunConfig(8, "s1", 0.1, 128, "auto", "text", Map.of()), new RunHooks()
+        {
+        });
         assertEquals("done", result.getFinalOutput());
         assertTrue(result.getItems().stream().anyMatch(i -> i.getType() == RunItemType.TOOL_RESULT));
         assertTrue(sessions.load("s1").isPresent());
     }
 
     @Test
-    void validatesStructuredOutputSchema() {
+    void validatesStructuredOutputSchema()
+    {
         AgentDefinition def = baseDef("structured");
         def.setOutputSchemaName("summary");
 
@@ -123,14 +137,17 @@ class AdvancedAgentRunnerTest {
         agents.register(new Agent(def));
 
         OutputSchemaRegistry registry = new OutputSchemaRegistry();
-        registry.register(new OutputSchema() {
+        registry.register(new OutputSchema()
+        {
             @Override
-            public String name() {
+            public String name()
+            {
                 return "summary";
             }
 
             @Override
-            public Map<String, String> requiredFields() {
+            public Map<String, String> requiredFields()
+            {
                 return Map.of("title", "string");
             }
         });
@@ -150,11 +167,14 @@ class AdvancedAgentRunnerTest {
             new OutputValidator(),
             new RunEventPublisher());
 
-        RunResult result = runner.run(new Agent(def), "go", RunConfig.defaults(), new RunHooks() {});
+        RunResult result = runner.run(new Agent(def), "go", RunConfig.defaults(), new RunHooks()
+        {
+        });
         assertEquals("ok", result.getFinalOutput());
     }
 
-    private AgentDefinition baseDef(String id) {
+    private AgentDefinition baseDef(String id)
+    {
         AgentDefinition d = new AgentDefinition();
         d.setId(id);
         d.setName(id);

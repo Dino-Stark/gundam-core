@@ -2,25 +2,30 @@ package stark.dataworks.coderaider.gundam.core.tool.builtin;
 
 import java.util.Map;
 import java.util.Objects;
+
 import stark.dataworks.coderaider.gundam.core.tool.ITool;
 import stark.dataworks.coderaider.gundam.core.tool.ToolCategory;
 import stark.dataworks.coderaider.gundam.core.tool.ToolDefinition;
 
-public abstract class AbstractBuiltinTool implements ITool {
+public abstract class AbstractBuiltinTool implements ITool
+{
     private final ToolDefinition definition;
     private final ToolCategory category;
 
-    protected AbstractBuiltinTool(ToolDefinition definition, ToolCategory category) {
+    protected AbstractBuiltinTool(ToolDefinition definition, ToolCategory category)
+    {
         this.definition = Objects.requireNonNull(definition, "definition");
         this.category = Objects.requireNonNull(category, "category");
     }
 
     @Override
-    public ToolDefinition definition() {
+    public ToolDefinition definition()
+    {
         return definition;
     }
 
-    public ToolCategory category() {
+    public ToolCategory category()
+    {
         return category;
     }
 

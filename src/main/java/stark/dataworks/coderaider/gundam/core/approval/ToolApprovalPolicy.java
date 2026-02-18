@@ -1,5 +1,6 @@
 package stark.dataworks.coderaider.gundam.core.approval;
 
-public interface ToolApprovalPolicy {
+public interface ToolApprovalPolicy
+{
     ToolApprovalDecision decide(ToolApprovalRequest request);
 }

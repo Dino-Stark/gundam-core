@@ -1,5 +1,6 @@
 package stark.dataworks.coderaider.gundam.core.agent;
 
-public interface IAgent {
+public interface IAgent
+{
     AgentDefinition definition();
 }

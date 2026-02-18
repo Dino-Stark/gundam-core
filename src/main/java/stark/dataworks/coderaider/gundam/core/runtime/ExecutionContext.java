@@ -1,43 +1,52 @@
 package stark.dataworks.coderaider.gundam.core.runtime;
 
 import java.util.Objects;
+
 import stark.dataworks.coderaider.gundam.core.agent.IAgent;
 import stark.dataworks.coderaider.gundam.core.memory.IAgentMemory;
 import stark.dataworks.coderaider.gundam.core.metrics.TokenUsageTracker;
 
-public class ExecutionContext {
+public class ExecutionContext
+{
     private IAgent agent;
     private final IAgentMemory memory;
     private final TokenUsageTracker tokenUsageTracker;
     private int currentStep;
 
-    public ExecutionContext(IAgent agent, IAgentMemory memory, TokenUsageTracker tokenUsageTracker) {
+    public ExecutionContext(IAgent agent, IAgentMemory memory, TokenUsageTracker tokenUsageTracker)
+    {
         this.agent = Objects.requireNonNull(agent, "agent");
         this.memory = Objects.requireNonNull(memory, "memory");
         this.tokenUsageTracker = Objects.requireNonNull(tokenUsageTracker, "tokenUsageTracker");
     }
 
-    public IAgent getAgent() {
+    public IAgent getAgent()
+    {
         return agent;
     }
 
-    public void setAgent(IAgent agent) {
+    public void setAgent(IAgent agent)
+    {
         this.agent = agent;
     }
 
-    public IAgentMemory getMemory() {
+    public IAgentMemory getMemory()
+    {
         return memory;
     }
 
-    public TokenUsageTracker getTokenUsageTracker() {
+    public TokenUsageTracker getTokenUsageTracker()
+    {
         return tokenUsageTracker;
     }
 
-    public int getCurrentStep() {
+    public int getCurrentStep()
+    {
         return currentStep;
     }
 
-    public void incrementStep() {
+    public void incrementStep()
+    {
         currentStep++;
     }
 }

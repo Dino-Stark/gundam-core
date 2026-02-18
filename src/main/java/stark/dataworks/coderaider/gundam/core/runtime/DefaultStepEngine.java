@@ -2,6 +2,7 @@ package stark.dataworks.coderaider.gundam.core.runtime;
 
 import java.util.List;
 import java.util.stream.Collectors;
+
 import stark.dataworks.coderaider.gundam.core.agent.IAgent;
 import stark.dataworks.coderaider.gundam.core.agent.IAgentRegistry;
 import stark.dataworks.coderaider.gundam.core.context.IContextBuilder;
@@ -17,7 +18,8 @@ import stark.dataworks.coderaider.gundam.core.tool.ITool;
 import stark.dataworks.coderaider.gundam.core.tool.IToolRegistry;
 import stark.dataworks.coderaider.gundam.core.tool.ToolDefinition;
 
-public class DefaultStepEngine implements IStepEngine {
+public class DefaultStepEngine implements IStepEngine
+{
     private final ILlmClient llmClient;
     private final IToolRegistry toolRegistry;
     private final IAgentRegistry agentRegistry;
@@ -28,7 +30,8 @@ public class DefaultStepEngine implements IStepEngine {
                              IToolRegistry toolRegistry,
                              IAgentRegistry agentRegistry,
                              IContextBuilder contextBuilder,
-                             HookManager hooks) {
+                             HookManager hooks)
+    {
         this.llmClient = llmClient;
         this.toolRegistry = toolRegistry;
         this.agentRegistry = agentRegistry;
@@ -37,9 +40,11 @@ public class DefaultStepEngine implements IStepEngine {
     }
 
     @Override
-    public AgentRunResult run(ExecutionContext context, String userInput) {
+    public AgentRunResult run(ExecutionContext context, String userInput)
+    {
         hooks.beforeRun(context);
-        while (context.getCurrentStep() < context.getAgent().definition().getMaxSteps()) {
+        while (context.getCurrentStep() < context.getAgent().definition().getMaxSteps())
+        {
             hooks.onStep(context);
             context.incrementStep();
 
@@ -59,11 +64,13 @@ public class DefaultStepEngine implements IStepEngine {
 
             context.getTokenUsageTracker().add(response.getTokenUsage());
 
-            if (!response.getContent().isBlank()) {
+            if (!response.getContent().isBlank())
+            {
                 context.getMemory().append(new Message(Role.ASSISTANT, response.getContent()));
             }
 
-            if (response.getHandoffAgentId().isPresent()) {
+            if (response.getHandoffAgentId().isPresent())
+            {
                 String handoffId = response.getHandoffAgentId().get();
                 IAgent nextAgent = agentRegistry.get(handoffId)
                     .orElseThrow(() -> new IllegalStateException("Handoff target not found: " + handoffId));
@@ -72,8 +79,10 @@ public class DefaultStepEngine implements IStepEngine {
                 continue;
             }
 
-            if (!response.getToolCalls().isEmpty()) {
-                for (ToolCall toolCall : response.getToolCalls()) {
+            if (!response.getToolCalls().isEmpty())
+            {
+                for (ToolCall toolCall : response.getToolCalls())
+                {
                     ITool tool = toolRegistry.get(toolCall.getToolName())
                         .orElseThrow(() -> new IllegalStateException("Tool not found: " + toolCall.getToolName()));
                     hooks.beforeTool(toolCall.getToolName(), toolCall.getArguments());

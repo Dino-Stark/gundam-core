@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import stark.dataworks.coderaider.gundam.core.agent.IAgent;
 import stark.dataworks.coderaider.gundam.core.agent.IAgentRegistry;
 import stark.dataworks.coderaider.gundam.core.approval.ToolApprovalDecision;
@@ -50,7 +51,8 @@ import stark.dataworks.coderaider.gundam.core.tool.ToolDefinition;
 import stark.dataworks.coderaider.gundam.core.tracing.TraceProvider;
 import stark.dataworks.coderaider.gundam.core.tracing.TraceSpan;
 
-public class AdvancedAgentRunner {
+public class AdvancedAgentRunner
+{
     private final ILlmClient llmClient;
     private final IToolRegistry toolRegistry;
     private final IAgentRegistry agentRegistry;
@@ -77,7 +79,8 @@ public class AdvancedAgentRunner {
                                ToolApprovalPolicy toolApprovalPolicy,
                                OutputSchemaRegistry outputSchemaRegistry,
                                OutputValidator outputValidator,
-                               RunEventPublisher eventPublisher) {
+                               RunEventPublisher eventPublisher)
+    {
         this.llmClient = llmClient;
         this.toolRegistry = toolRegistry;
         this.agentRegistry = agentRegistry;
@@ -93,28 +96,34 @@ public class AdvancedAgentRunner {
         this.eventPublisher = eventPublisher;
     }
 
-    public RunResult run(IAgent startingAgent, String userInput, RunConfig runConfig, RunHooks runHooks) {
+    public RunResult run(IAgent startingAgent, String userInput, RunConfig runConfig, RunHooks runHooks)
+    {
         IAgentMemory memory = new InMemoryAgentMemory();
-        if (runConfig.getSessionId() != null) {
+        if (runConfig.getSessionId() != null)
+        {
             sessionStore.load(runConfig.getSessionId()).ifPresent(s -> s.getMessages().forEach(memory::append));
         }
 
         RunnerContext context = new RunnerContext(startingAgent, memory);
         emit(context, runHooks, RunEventType.RUN_STARTED, Map.of("agent", startingAgent.definition().getId()));
 
-        if (userInput != null && !userInput.isBlank()) {
+        if (userInput != null && !userInput.isBlank())
+        {
             context.getMemory().append(new Message(Role.USER, userInput));
             context.getItems().add(new RunItem(RunItemType.USER_MESSAGE, userInput, Map.of()));
         }
 
-        try {
-            while (context.getTurns() < runConfig.getMaxTurns()) {
+        try
+        {
+            while (context.getTurns() < runConfig.getMaxTurns())
+            {
                 context.incrementTurns();
                 emit(context, runHooks, RunEventType.STEP_STARTED, Map.of("turn", context.getTurns()));
 
                 ExecutionContext legacyContext = new ExecutionContext(context.getCurrentAgent(), context.getMemory(), context.getUsageTracker());
                 GuardrailDecision inputDecision = guardrailEngine.evaluateInput(legacyContext, userInput);
-                if (!inputDecision.isAllowed()) {
+                if (!inputDecision.isAllowed())
+                {
                     throw new GuardrailTripwireException("input", inputDecision.getReason());
                 }
 
@@ -129,19 +138,23 @@ public class AdvancedAgentRunner {
                 context.getUsageTracker().add(response.getTokenUsage());
 
                 GuardrailDecision outputDecision = guardrailEngine.evaluateOutput(legacyContext, response);
-                if (!outputDecision.isAllowed()) {
+                if (!outputDecision.isAllowed())
+                {
                     throw new GuardrailTripwireException("output", outputDecision.getReason());
                 }
 
-                if (!response.getContent().isBlank()) {
+                if (!response.getContent().isBlank())
+                {
                     context.getMemory().append(new Message(Role.ASSISTANT, response.getContent()));
                     context.getItems().add(new RunItem(RunItemType.ASSISTANT_MESSAGE, response.getContent(), response.getStructuredOutput()));
                 }
 
-                if (response.getHandoffAgentId().isPresent()) {
+                if (response.getHandoffAgentId().isPresent())
+                {
                     String toAgent = response.getHandoffAgentId().get();
                     Handoff handoff = new Handoff(context.getCurrentAgent().definition().getId(), toAgent, "model requested handoff");
-                    if (!context.getCurrentAgent().definition().getHandoffAgentIds().contains(toAgent) || !handoffRouter.canRoute(handoff)) {
+                    if (!context.getCurrentAgent().definition().getHandoffAgentIds().contains(toAgent) || !handoffRouter.canRoute(handoff))
+                    {
                         throw new HandoffDeniedException(handoff.getFromAgentId(), toAgent);
                     }
 
@@ -150,20 +163,25 @@ public class AdvancedAgentRunner {
                     context.setCurrentAgent(next);
                     context.getItems().add(new RunItem(RunItemType.HANDOFF, toAgent, Map.of("from", handoff.getFromAgentId())));
                     emit(context, runHooks, RunEventType.HANDOFF_OCCURRED, Map.of("from", handoff.getFromAgentId(), "to", toAgent));
-                    if (context.getCurrentAgent().definition().isResetInputAfterHandoff()) {
+                    if (context.getCurrentAgent().definition().isResetInputAfterHandoff())
+                    {
                         userInput = null;
                     }
                     continue;
                 }
 
-                if (!response.getToolCalls().isEmpty()) {
-                    for (ToolCall call : response.getToolCalls()) {
+                if (!response.getToolCalls().isEmpty())
+                {
+                    for (ToolCall call : response.getToolCalls())
+                    {
                         emit(context, runHooks, RunEventType.TOOL_CALL_REQUESTED, Map.of("tool", call.getToolName()));
 
-                        if (context.getCurrentAgent().definition().isRequireToolApproval()) {
+                        if (context.getCurrentAgent().definition().isRequireToolApproval())
+                        {
                             ToolApprovalDecision decision = toolApprovalPolicy.decide(
                                 new ToolApprovalRequest(context.getCurrentAgent().definition().getId(), call.getToolName(), call.getArguments()));
-                            if (!decision.isApproved()) {
+                            if (!decision.isApproved())
+                            {
                                 context.getItems().add(new RunItem(RunItemType.SYSTEM_EVENT,
                                     "Tool call denied: " + decision.getReason(), Map.of("tool", call.getToolName())));
                                 continue;
@@ -172,7 +190,8 @@ public class AdvancedAgentRunner {
 
                         ITool tool = toolRegistry.get(call.getToolName())
                             .orElseThrow(() -> new IllegalStateException("Tool not found: " + call.getToolName()));
-                        try {
+                        try
+                        {
                             hookManager.beforeTool(call.getToolName(), call.getArguments());
                             String result = tool.execute(call.getArguments());
                             hookManager.afterTool(call.getToolName(), result);
@@ -180,22 +199,27 @@ public class AdvancedAgentRunner {
                             context.getItems().add(new RunItem(RunItemType.TOOL_CALL, call.getToolName(), call.getArguments()));
                             context.getItems().add(new RunItem(RunItemType.TOOL_RESULT, result, Map.of("tool", call.getToolName())));
                             emit(context, runHooks, RunEventType.TOOL_CALL_COMPLETED, Map.of("tool", call.getToolName()));
-                        } catch (RuntimeException ex) {
+                        }
+                        catch (RuntimeException ex)
+                        {
                             throw new ToolExecutionFailureException(call.getToolName(), ex);
                         }
                     }
-                    if (context.getCurrentAgent().definition().isResetInputAfterToolCall()) {
+                    if (context.getCurrentAgent().definition().isResetInputAfterToolCall())
+                    {
                         userInput = null;
                     }
                     continue;
                 }
 
-                if (context.getCurrentAgent().definition().getOutputSchemaName() != null) {
+                if (context.getCurrentAgent().definition().getOutputSchemaName() != null)
+                {
                     OutputValidationResult validation = outputSchemaRegistry
                         .get(context.getCurrentAgent().definition().getOutputSchemaName())
                         .map(schema -> outputValidator.validate(response.getStructuredOutput(), schema))
                         .orElse(OutputValidationResult.fail("Output schema not found: " + context.getCurrentAgent().definition().getOutputSchemaName()));
-                    if (!validation.isValid()) {
+                    if (!validation.isValid())
+                    {
                         context.getItems().add(new RunItem(RunItemType.SYSTEM_EVENT, "Structured output invalid: " + validation.getReason(), Map.of()));
                         continue;
                     }
@@ -205,41 +229,58 @@ public class AdvancedAgentRunner {
             }
 
             throw new MaxTurnsExceededException(runConfig.getMaxTurns());
-        } catch (RuntimeException error) {
+        }
+        catch (RuntimeException error)
+        {
             return handleError(context, runConfig, error);
         }
     }
 
-    private RunResult handleError(RunnerContext context, RunConfig config, RuntimeException error) {
+    private RunResult handleError(RunnerContext context, RunConfig config, RuntimeException error)
+    {
         RunErrorKind kind = classify(error);
         RunErrorHandlerResult decision = config.getRunErrorHandlers().get(kind)
             .map(h -> h.onError(new RunErrorData(kind, error.getMessage(), error)))
             .orElse(RunErrorHandlerResult.notHandled());
 
         String finalOutput;
-        if (decision.isHandled()) {
+        if (decision.isHandled())
+        {
             finalOutput = decision.getFinalOutput();
-        } else if (kind == RunErrorKind.INPUT_GUARDRAIL) {
+        }
+        else if (kind == RunErrorKind.INPUT_GUARDRAIL)
+        {
             finalOutput = "Blocked by input guardrail";
-        } else if (kind == RunErrorKind.OUTPUT_GUARDRAIL) {
+        }
+        else if (kind == RunErrorKind.OUTPUT_GUARDRAIL)
+        {
             finalOutput = "Blocked by output guardrail";
-        } else {
+        }
+        else
+        {
             finalOutput = "Run failed: " + error.getMessage();
         }
-        
+
         context.getItems().add(new RunItem(RunItemType.SYSTEM_EVENT, finalOutput, Map.of("errorKind", kind.name())));
-        
-        if (kind == RunErrorKind.INPUT_GUARDRAIL || kind == RunErrorKind.OUTPUT_GUARDRAIL) {
-            emit(context, new RunHooks() {}, RunEventType.GUARDRAIL_BLOCKED, Map.of("kind", kind.name(), "message", error.getMessage()));
+
+        if (kind == RunErrorKind.INPUT_GUARDRAIL || kind == RunErrorKind.OUTPUT_GUARDRAIL)
+        {
+            emit(context, new RunHooks()
+            {
+            }, RunEventType.GUARDRAIL_BLOCKED, Map.of("kind", kind.name(), "message", error.getMessage()));
         }
-        
-        emit(context, new RunHooks() {}, RunEventType.RUN_FAILED, Map.of("kind", kind.name(), "message", error.getMessage()));
+
+        emit(context, new RunHooks()
+        {
+        }, RunEventType.RUN_FAILED, Map.of("kind", kind.name(), "message", error.getMessage()));
         return finalizeResult(context, finalOutput, config);
     }
 
-    private RunErrorKind classify(RuntimeException error) {
+    private RunErrorKind classify(RuntimeException error)
+    {
         if (error instanceof MaxTurnsExceededException) return RunErrorKind.MAX_TURNS;
-        if (error instanceof GuardrailTripwireException e) {
+        if (error instanceof GuardrailTripwireException e)
+        {
             return e.getMessage().contains("input") ? RunErrorKind.INPUT_GUARDRAIL : RunErrorKind.OUTPUT_GUARDRAIL;
         }
         if (error instanceof HandoffDeniedException) return RunErrorKind.HANDOFF;
@@ -248,36 +289,49 @@ public class AdvancedAgentRunner {
         return RunErrorKind.UNKNOWN;
     }
 
-    private LlmResponse invokeWithRetry(LlmRequest request, RunConfig config) {
+    private LlmResponse invokeWithRetry(LlmRequest request, RunConfig config)
+    {
         RuntimeException last = null;
-        for (int attempt = 1; attempt <= config.getRetryPolicy().getMaxAttempts(); attempt++) {
+        for (int attempt = 1; attempt <= config.getRetryPolicy().getMaxAttempts(); attempt++)
+        {
             TraceSpan span = traceProvider.startSpan("agent.model_call");
-            try {
+            try
+            {
                 LlmResponse response = llmClient.chat(request);
                 span.annotate("finish_reason", response.getFinishReason());
                 span.annotate("attempt", String.valueOf(attempt));
                 return response;
-            } catch (RuntimeException ex) {
+            }
+            catch (RuntimeException ex)
+            {
                 last = ex;
                 span.annotate("error", ex.getMessage());
-                if (attempt < config.getRetryPolicy().getMaxAttempts() && config.getRetryPolicy().getBackoffMillis() > 0) {
-                    try {
+                if (attempt < config.getRetryPolicy().getMaxAttempts() && config.getRetryPolicy().getBackoffMillis() > 0)
+                {
+                    try
+                    {
                         Thread.sleep(config.getRetryPolicy().getBackoffMillis());
-                    } catch (InterruptedException interruptedException) {
+                    }
+                    catch (InterruptedException interruptedException)
+                    {
                         Thread.currentThread().interrupt();
                         throw new ModelInvocationException("Interrupted during model retry", interruptedException);
                     }
                 }
-            } finally {
+            }
+            finally
+            {
                 span.close();
             }
         }
         throw new ModelInvocationException("Model invocation failed after retries", last);
     }
 
-    private List<ToolDefinition> resolveTools(List<String> toolNames) {
+    private List<ToolDefinition> resolveTools(List<String> toolNames)
+    {
         List<ToolDefinition> definitions = new ArrayList<>();
-        for (String toolName : toolNames) {
+        for (String toolName : toolNames)
+        {
             definitions.add(toolRegistry.get(toolName)
                 .orElseThrow(() -> new IllegalStateException("Tool not found: " + toolName))
                 .definition());
@@ -285,20 +339,25 @@ public class AdvancedAgentRunner {
         return definitions;
     }
 
-    private void emit(RunnerContext context, RunHooks hooks, RunEventType type, Map<String, Object> attributes) {
+    private void emit(RunnerContext context, RunHooks hooks, RunEventType type, Map<String, Object> attributes)
+    {
         RunEvent event = new RunEvent(type, attributes);
         context.getEvents().add(event);
         hooks.onEvent(event);
         eventPublisher.publish(event);
     }
 
-    private RunResult finalizeResult(RunnerContext context, String finalOutput, RunConfig config) {
-        if (config.getSessionId() != null) {
+    private RunResult finalizeResult(RunnerContext context, String finalOutput, RunConfig config)
+    {
+        if (config.getSessionId() != null)
+        {
             sessionStore.save(new Session(config.getSessionId(), context.getMemory().messages()));
         }
         Map<String, Object> attrs = new HashMap<>();
         attrs.put("finalAgent", context.getCurrentAgent().definition().getId());
-        emit(context, new RunHooks() {}, RunEventType.RUN_COMPLETED, attrs);
+        emit(context, new RunHooks()
+        {
+        }, RunEventType.RUN_COMPLETED, attrs);
         return new RunResult(
             finalOutput,
             context.getCurrentAgent().definition().getId(),

@@ -1,6 +1,7 @@
 package stark.dataworks.coderaider.gundam.core.runerror;
 
-public enum RunErrorKind {
+public enum RunErrorKind
+{
     MAX_TURNS,
     INPUT_GUARDRAIL,
     OUTPUT_GUARDRAIL,

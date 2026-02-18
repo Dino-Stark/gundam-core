@@ -4,23 +4,31 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.Map;
 import java.util.stream.Collectors;
+
 import stark.dataworks.coderaider.gundam.core.tool.ToolCategory;
 import stark.dataworks.coderaider.gundam.core.tool.ToolDefinition;
 
-public class LocalShellTool extends AbstractBuiltinTool {
-    public LocalShellTool(ToolDefinition definition) {
+public class LocalShellTool extends AbstractBuiltinTool
+{
+    public LocalShellTool(ToolDefinition definition)
+    {
         super(definition, ToolCategory.SHELL);
     }
 
     @Override
-    public String execute(Map<String, Object> input) {
+    public String execute(Map<String, Object> input)
+    {
         String cmd = String.valueOf(input.getOrDefault("command", "echo empty"));
-        try {
+        try
+        {
             Process process = new ProcessBuilder("bash", "-lc", cmd).start();
-            try (BufferedReader r = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+            try (BufferedReader r = new BufferedReader(new InputStreamReader(process.getInputStream())))
+            {
                 return r.lines().collect(Collectors.joining("\n"));
             }
-        } catch (Exception e) {
+        }
+        catch (Exception e)
+        {
             return "Shell error: " + e.getMessage();
         }
     }

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Map;
+
 import org.junit.jupiter.api.Test;
 import stark.dataworks.coderaider.gundam.core.agent.Agent;
 import stark.dataworks.coderaider.gundam.core.agent.AgentDefinition;
@@ -37,10 +38,12 @@ import stark.dataworks.coderaider.gundam.core.tool.builtin.WebSearchTool;
 import stark.dataworks.coderaider.gundam.core.tool.ToolDefinition;
 import stark.dataworks.coderaider.gundam.core.tracing.NoopTraceProvider;
 
-class McpAndErrorHandlingTest {
+class McpAndErrorHandlingTest
+{
 
     @Test
-    void mcpManagerCanExposeRemoteToolsAsLocal() {
+    void mcpManagerCanExposeRemoteToolsAsLocal()
+    {
         InMemoryMcpServerClient client = new InMemoryMcpServerClient();
         client.registerTools("s1", List.of(new McpToolDescriptor("remote_search", "remote", Map.of())));
         client.registerHandler("s1", "remote_search", args -> "remote:" + args.getOrDefault("q", ""));
@@ -59,7 +62,8 @@ class McpAndErrorHandlingTest {
     }
 
     @Test
-    void runErrorHandlerCanHandleModelFailures() {
+    void runErrorHandlerCanHandleModelFailures()
+    {
         AgentDefinition def = new AgentDefinition();
         def.setId("a");
         def.setName("a");
@@ -73,7 +77,10 @@ class McpAndErrorHandlingTest {
         handlers.register(RunErrorKind.MODEL_INVOCATION, data -> RunErrorHandlerResult.handled("fallback output"));
 
         AdvancedAgentRunner runner = new AdvancedAgentRunner(
-            req -> { throw new RuntimeException("model down"); },
+            req ->
+            {
+                throw new RuntimeException("model down");
+            },
             new ToolRegistry(),
             agents,
             new DefaultContextBuilder(),
@@ -90,13 +97,16 @@ class McpAndErrorHandlingTest {
         RunConfig cfg = new RunConfig(2, null, 0.2, 128, "auto", "text", Map.of(),
             new RetryPolicy(1, 0), handlers);
 
-        RunResult result = runner.run(new Agent(def), "hello", cfg, new RunHooks() {});
+        RunResult result = runner.run(new Agent(def), "hello", cfg, new RunHooks()
+        {
+        });
         assertEquals("fallback output", result.getFinalOutput());
         assertTrue(result.getEvents().stream().anyMatch(e -> e.getType().name().equals("RUN_FAILED")));
     }
 
     @Test
-    void builtinToolEcosystemHasWebSearchTool() {
+    void builtinToolEcosystemHasWebSearchTool()
+    {
         WebSearchTool tool = new WebSearchTool(new ToolDefinition("web_search", "", List.of()));
         assertTrue(tool.execute(Map.of("query", "gundam")).contains("gundam"));
     }
