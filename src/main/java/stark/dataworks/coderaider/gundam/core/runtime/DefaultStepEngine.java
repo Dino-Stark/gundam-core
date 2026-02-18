@@ -3,6 +3,7 @@ package stark.dataworks.coderaider.gundam.core.runtime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import lombok.AllArgsConstructor;
 import stark.dataworks.coderaider.gundam.core.agent.IAgent;
 import stark.dataworks.coderaider.gundam.core.agent.IAgentRegistry;
 import stark.dataworks.coderaider.gundam.core.context.IContextBuilder;
@@ -19,9 +20,10 @@ import stark.dataworks.coderaider.gundam.core.tool.IToolRegistry;
 import stark.dataworks.coderaider.gundam.core.tool.ToolDefinition;
 
 /**
- * DefaultStepEngine implements single-step execution that binds model calls, tool calls, and memory updates.
+ * {@link DefaultStepEngine} implements single-step execution that binds model calls, tool calls, and memory updates.
  * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
  */
+@AllArgsConstructor
 public class DefaultStepEngine implements IStepEngine
 {
 
@@ -49,27 +51,6 @@ public class DefaultStepEngine implements IStepEngine
      * Internal state for hooks; used while coordinating runtime behavior.
      */
     private final HookManager hooks;
-
-    /**
-     * Performs default step engine as part of DefaultStepEngine runtime responsibilities.
-     * @param llmClient The llm client used by this operation.
-     * @param toolRegistry The tool registry used by this operation.
-     * @param agentRegistry The agent registry used by this operation.
-     * @param contextBuilder The context builder used by this operation.
-     * @param hooks The hooks used by this operation.
-     */
-    public DefaultStepEngine(ILlmClient llmClient,
-                             IToolRegistry toolRegistry,
-                             IAgentRegistry agentRegistry,
-                             IContextBuilder contextBuilder,
-                             HookManager hooks)
-    {
-        this.llmClient = llmClient;
-        this.toolRegistry = toolRegistry;
-        this.agentRegistry = agentRegistry;
-        this.contextBuilder = contextBuilder;
-        this.hooks = hooks;
-    }
 
     /**
      * Runs the primary execution flow, coordinating model/tool work and runtime policies.
