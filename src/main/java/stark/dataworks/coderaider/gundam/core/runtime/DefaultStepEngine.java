@@ -104,8 +104,14 @@ public class DefaultStepEngine implements IStepEngine
                 currentAgent.definition().getModel(),
                 messages,
                 tools,
+                // TODO: make this configurable, temperature & max tokens should be get from agent definition.
                 new LlmOptions(0.2, 512));
             LlmStreamListener streamListener = delta -> hooks.onModelResponseDelta(context, delta);
+
+            // TODO: I don't think the stream mode response is working correctly here.
+            // The stream mode should return a stream of deltas, maybe a Flux<String> or something similar.
+            // Then we can subscribe to that stream and update the memory with each delta.
+            // And we can return the stream as the output to frontend, to reduce TTFT (time to first token).
             LlmResponse response = streamModelResponse
                 ? llmClient.chatStream(request, streamListener)
                 : llmClient.chat(request);

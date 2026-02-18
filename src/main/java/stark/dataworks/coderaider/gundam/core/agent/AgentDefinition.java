@@ -95,7 +95,7 @@ public class AgentDefinition
     }
 
     /**
-     * Validates  and throws when required constraints are violated.
+     * Validates and throws when required constraints are violated.
      */
     public void validate()
     {
