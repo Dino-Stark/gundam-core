@@ -109,7 +109,7 @@ public class DefaultStepEngine implements IStepEngine
             LlmStreamListener streamListener = delta -> hooks.onModelResponseDelta(context, delta);
 
             // TODO: I don't think the stream mode response is working correctly here.
-            // The stream mode should return a stream of deltas, maybe a Flux<String> or something similar.
+            // The stream mode should return a stream of deltas, maybe a Flux<String> or something similar, so that we can still get token usage, tool call, etc.
             // Then we can subscribe to that stream and update the memory with each delta.
             // And we can return the stream as the output to frontend, to reduce TTFT (time to first token).
             LlmResponse response = streamModelResponse
