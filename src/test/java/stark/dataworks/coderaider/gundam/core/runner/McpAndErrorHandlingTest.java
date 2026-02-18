@@ -11,6 +11,7 @@ import stark.dataworks.coderaider.gundam.core.agent.AgentDefinition;
 import stark.dataworks.coderaider.gundam.core.agent.AgentRegistry;
 import stark.dataworks.coderaider.gundam.core.approval.AllowAllToolApprovalPolicy;
 import stark.dataworks.coderaider.gundam.core.context.DefaultContextBuilder;
+import stark.dataworks.coderaider.gundam.core.event.RunEvent;
 import stark.dataworks.coderaider.gundam.core.guardrail.GuardrailEngine;
 import stark.dataworks.coderaider.gundam.core.handoff.HandoffRouter;
 import stark.dataworks.coderaider.gundam.core.policy.RetryPolicy;
@@ -89,7 +90,7 @@ class McpAndErrorHandlingTest {
         RunConfig cfg = new RunConfig(2, null, 0.2, 128, "auto", "text", Map.of(),
             new RetryPolicy(1, 0), handlers);
 
-        RunResult result = runner.run(new Agent(def), "hello", cfg, event -> {});
+        RunResult result = runner.run(new Agent(def), "hello", cfg, new RunHooks() {});
         assertEquals("fallback output", result.getFinalOutput());
         assertTrue(result.getEvents().stream().anyMatch(e -> e.getType().name().equals("RUN_FAILED")));
     }
