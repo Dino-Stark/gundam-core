@@ -166,7 +166,7 @@ public class AdvancedAgentRunner
     private RunResult runInternal(IAgent startingAgent, String userInput, RunConfiguration runConfiguration, IRunHooks runHooks, boolean streamModelResponse)
     {
         // TODO: Make this memory configurable.
-        // Options: in-memory, redis, mysql, context-service.
+        // Options: in-memory, redis, mysql, context-service (will be implemented somewhere else I suppose).
         IAgentMemory memory = new InMemoryAgentMemory();
         if (runConfiguration.getSessionId() != null)
         {
