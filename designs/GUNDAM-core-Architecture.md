@@ -75,7 +75,7 @@ Scope used for comparison:
 | Realtime session contracts | `realtime/*` | `realtime/*` contracts/events/config | 🟨 Partial (contract layer added) |
 | Voice workflow contracts | `voice/*` | `voice/*` contracts/config/result | 🟨 Partial (contract layer added) |
 | REPL / visualization helpers | `repl.py`, `extensions/visualization.py` | No direct equivalent yet | ❌ Not implemented |
-| Provider adapters (OpenAI/Gemini/etc.) | `models/*` | SPI exists, concrete adapters not in kernel | 🟨 By design (pluggable SPI) |
+| Provider adapters (OpenAI/Gemini/Qwen/Seed/DeepSeek + Spring AI bridge) | `models/*` | `llmspi/adapter` with OpenAI-compatible adapters + `SpringAiChatClientLlmClient` | ✅ Implemented (initial adapter layer) |
 
 ## 3. What was added in this update
 
@@ -86,26 +86,33 @@ Scope used for comparison:
    - `IRealtimeClient`, `IRealtimeSession`, event model, config
 3. Added **voice contract package**:
    - `IVoicePipeline`, `VoiceInput`, `VoiceResult`, `VoicePipelineConfig`, `VoiceException`
-4. Added **examples package** with runnable `main` classes:
-   - `SimpleAgentExample`
-   - `ToolCallingAgentExample`
-   - `HandoffAgentExample`
-5. Added tests for new extensions/realtime/voice contracts.
+4. Added **examples package** with runnable `main` classes (basic -> complex):
+   - `Example01SingleSimpleAgent`
+   - `Example02AgentWithTools`
+   - `Example03AgentWithMcp`
+   - `Example04MultiRoundSingleAgentWithToolsAndMcp`
+   - `Example05AgentGroupWithHandoffs`
+5. Added provider adapters under `llmspi/adapter` for OpenAI-compatible endpoints and a Spring AI bridge:
+   - `OpenAiCompatibleLlmClient`, `OpenAiLlmClient`, `GeminiLlmClient`, `QwenLlmClient`, `SeedLlmClient`, `DeepSeekLlmClient`
+   - `SpringAiChatClientLlmClient`
+6. Added tests for extensions/realtime/voice plus response-conversion tests for tool/handoff mapping.
 
 ## 4. Examples package usage
 
 Run examples with Maven exec (or run class from IDE):
 
-- `SimpleAgentExample` arguments:
+- `Example01SingleSimpleAgent` arguments:
   1. `model` (optional)
   2. `baseUrl` (optional placeholder)
   3. `apiKey` (optional placeholder)
   4. `prompt` (optional)
-
-- `ToolCallingAgentExample` arguments:
+- `Example02AgentWithTools` arguments:
   1. `city` (optional)
-
-- `HandoffAgentExample` arguments:
+- `Example03AgentWithMcp` arguments:
+  - no required args
+- `Example04MultiRoundSingleAgentWithToolsAndMcp` arguments:
+  1. `sessionId` (optional)
+- `Example05AgentGroupWithHandoffs` arguments:
   - no required args
 
 These examples are intentionally provider-neutral and use placeholders/mocked model logic so developers can replace them with real `ILlmClient` implementations.
@@ -138,7 +145,15 @@ A new OpenAI-compatible adapter layer is included under `llmspi/adapter`:
 - `QwenLlmClient`
 - `SeedLlmClient`
 - `DeepSeekLlmClient`
+- `SpringAiChatClientLlmClient`
 
 The adapter converts native provider responses into kernel-native `LlmResponse` fields (`content`, `toolCalls`, `handoffAgentId`) while keeping `LlmResponse` unchanged.
 
 Streaming (`chatStream`) is supported through SSE parsing and incremental conversion for text deltas and tool-call fragments.
+
+
+## 8. Spring AI dependency note
+
+- The project now targets `spring-ai-core` version `1.1.2` in `pom.xml`.
+- `SpringAiChatClientLlmClient` provides a bridge from Spring AI `ChatClient` into kernel `ILlmClient` while preserving `LlmResponse` contract.
+- The OpenAI-compatible adapters remain available for providers exposing `/chat/completions`-style APIs.

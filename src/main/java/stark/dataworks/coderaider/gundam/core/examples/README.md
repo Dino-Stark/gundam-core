@@ -33,5 +33,6 @@ OpenAI-compatible adapters are available in `llmspi/adapter`:
 - `QwenLlmClient`
 - `SeedLlmClient`
 - `DeepSeekLlmClient`
+- `SpringAiChatClientLlmClient` (bridge to Spring AI `ChatClient`)
 
 They normalize native responses into `LlmResponse` (`content`, `toolCalls`, `handoffAgentId`) and support both sync and stream invocation.
