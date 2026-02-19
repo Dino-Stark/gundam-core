@@ -2,8 +2,7 @@ package stark.dataworks.coderaider.gundam.core.errors;
 
 /**
  * MaxTurnsExceededException implements core runtime responsibilities.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public class MaxTurnsExceededException extends AgentsException
 {
 

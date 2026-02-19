@@ -11,8 +11,7 @@ import stark.dataworks.coderaider.gundam.core.metrics.TokenUsage;
 
 /**
  * RunResult implements normalized run result structures.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 @Getter
 public class RunResult
 {

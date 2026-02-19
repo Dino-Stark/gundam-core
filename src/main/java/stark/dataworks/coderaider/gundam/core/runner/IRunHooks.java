@@ -4,8 +4,7 @@ import stark.dataworks.coderaider.gundam.core.event.RunEvent;
 
 /**
  * RunHooks implements end-to-end run orchestration including retries, guardrails, handoffs, and events.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public interface IRunHooks
 {
 

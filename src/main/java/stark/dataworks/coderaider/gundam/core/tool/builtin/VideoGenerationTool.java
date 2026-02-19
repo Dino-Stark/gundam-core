@@ -13,8 +13,7 @@ import stark.dataworks.coderaider.gundam.core.tool.ToolDefinition;
 
 /**
  * VideoGenerationTool implements tool contracts, schema metadata, and executable tool registration.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public class VideoGenerationTool extends AbstractBuiltinTool
 {
     private final IVideoGenerator videoGenerator;

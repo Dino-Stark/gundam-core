@@ -4,8 +4,7 @@ import stark.dataworks.coderaider.gundam.core.runtime.ExecutionContext;
 
 /**
  * IAgentHook implements runtime lifecycle extension points.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public interface IAgentHook
 {
 

@@ -13,8 +13,7 @@ import stark.dataworks.coderaider.gundam.core.tool.ToolDefinition;
 
 /**
  * ImageGenerationTool implements tool contracts, schema metadata, and executable tool registration.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public class ImageGenerationTool extends AbstractBuiltinTool
 {
     private final IImageGenerator imageGenerator;

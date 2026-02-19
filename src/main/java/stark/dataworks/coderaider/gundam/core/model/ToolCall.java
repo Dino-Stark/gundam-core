@@ -8,8 +8,7 @@ import java.util.Objects;
 
 /**
  * ToolCall implements core runtime responsibilities.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 @Getter
 public class ToolCall
 {

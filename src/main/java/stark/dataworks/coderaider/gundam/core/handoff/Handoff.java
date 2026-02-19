@@ -6,8 +6,7 @@ import java.util.Objects;
 
 /**
  * Handoff implements agent transfer rules between specialized agents.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 @Getter
 public class Handoff
 {

@@ -4,8 +4,7 @@ import stark.dataworks.coderaider.gundam.core.agent.IAgent;
 
 /**
  * IAgentRunner implements single-step execution that binds model calls, tool calls, and memory updates.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public interface IAgentRunner
 {
 

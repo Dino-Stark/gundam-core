@@ -6,8 +6,7 @@ import java.util.Map;
 
 /**
  * LlmOptions implements provider-agnostic model invocation contracts.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 @Getter
 public class LlmOptions
 {

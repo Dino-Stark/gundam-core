@@ -7,8 +7,7 @@ import java.util.Objects;
 
 /**
  * McpToolDescriptor implements MCP server integration and tool bridging.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 @Getter
 public class McpToolDescriptor
 {

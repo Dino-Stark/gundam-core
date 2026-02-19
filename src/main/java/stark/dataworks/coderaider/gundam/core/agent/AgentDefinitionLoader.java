@@ -5,8 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * AgentDefinitionLoader implements agent definitions and lookup used by runners and handoff resolution.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public final class AgentDefinitionLoader
 {
 

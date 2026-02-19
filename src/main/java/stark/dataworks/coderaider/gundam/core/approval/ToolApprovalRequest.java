@@ -8,8 +8,7 @@ import java.util.Objects;
 
 /**
  * ToolApprovalRequest implements tool approval workflow.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 @Getter
 public class ToolApprovalRequest
 {

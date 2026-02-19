@@ -6,8 +6,7 @@ import java.util.Map;
 
 /**
  * ToolSchemaJson implements tool contracts, schema metadata, and executable tool registration.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public final class ToolSchemaJson
 {
 

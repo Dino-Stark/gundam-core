@@ -4,8 +4,7 @@ import stark.dataworks.coderaider.gundam.core.event.RunEvent;
 
 /**
  * RunEventListener implements core runtime responsibilities.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public interface RunEventListener
 {
 

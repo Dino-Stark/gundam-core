@@ -4,8 +4,7 @@ import lombok.Getter;
 
 /**
  * OutputValidationResult implements structured output schema validation.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 @Getter
 public class OutputValidationResult
 {

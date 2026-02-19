@@ -4,8 +4,7 @@ import java.util.Objects;
 
 /**
  * Agent implements agent definitions and lookup used by runners and handoff resolution.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public class Agent implements IAgent
 {
 

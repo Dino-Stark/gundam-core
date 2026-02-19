@@ -7,8 +7,7 @@ import java.util.function.Function;
 
 /**
  * InMemoryMcpServerClient implements MCP server integration and tool bridging.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public class InMemoryMcpServerClient implements McpServerClient
 {
 

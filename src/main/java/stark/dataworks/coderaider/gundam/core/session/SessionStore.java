@@ -4,8 +4,7 @@ import java.util.Optional;
 
 /**
  * SessionStore implements session persistence and restoration.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public interface SessionStore
 {
 

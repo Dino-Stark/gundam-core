@@ -4,8 +4,7 @@ import java.util.Map;
 
 /**
  * OutputSchema implements structured output schema validation.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public interface OutputSchema
 {
 

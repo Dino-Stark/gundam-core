@@ -2,8 +2,7 @@ package stark.dataworks.coderaider.gundam.core.approval;
 
 /**
  * AllowAllToolApprovalPolicy implements tool approval workflow.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public class AllowAllToolApprovalPolicy implements ToolApprovalPolicy
 {
 

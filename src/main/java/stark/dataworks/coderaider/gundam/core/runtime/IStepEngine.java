@@ -2,8 +2,7 @@ package stark.dataworks.coderaider.gundam.core.runtime;
 
 /**
  * IStepEngine implements single-step execution that binds model calls, tool calls, and memory updates.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public interface IStepEngine
 {
 

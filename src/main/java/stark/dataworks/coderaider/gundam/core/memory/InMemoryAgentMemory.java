@@ -8,8 +8,7 @@ import stark.dataworks.coderaider.gundam.core.model.Message;
 
 /**
  * InMemoryAgentMemory implements conversation state retention between turns.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public class InMemoryAgentMemory implements IAgentMemory
 {
 

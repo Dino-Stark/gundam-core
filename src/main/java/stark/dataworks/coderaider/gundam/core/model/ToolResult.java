@@ -6,8 +6,7 @@ import java.util.Objects;
 
 /**
  * ToolResult implements core runtime responsibilities.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 @Getter
 public class ToolResult
 {

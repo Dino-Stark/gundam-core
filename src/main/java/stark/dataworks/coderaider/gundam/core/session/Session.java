@@ -11,8 +11,7 @@ import stark.dataworks.coderaider.gundam.core.model.Message;
 
 /**
  * Session implements session persistence and restoration.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 @Getter
 @AllArgsConstructor
 public class Session

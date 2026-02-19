@@ -7,8 +7,7 @@ import stark.dataworks.coderaider.gundam.core.tool.ToolDefinition;
 
 /**
  * FileSearchTool implements tool contracts, schema metadata, and executable tool registration.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public class FileSearchTool extends AbstractBuiltinTool
 {
 

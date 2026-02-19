@@ -6,8 +6,7 @@ import java.util.Map;
 
 /**
  * ToolExecutionContext implements tool contracts, schema metadata, and executable tool registration.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 @Getter
 public class ToolExecutionContext
 {

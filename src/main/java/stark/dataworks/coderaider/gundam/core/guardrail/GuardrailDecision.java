@@ -6,8 +6,7 @@ import java.util.Objects;
 
 /**
  * GuardrailDecision implements input/output policy evaluation around model responses.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 @Getter
 public class GuardrailDecision
 {

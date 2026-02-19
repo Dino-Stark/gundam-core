@@ -8,8 +8,7 @@ import stark.dataworks.coderaider.gundam.core.runtime.ExecutionContext;
 
 /**
  * GuardrailEngine implements input/output policy evaluation around model responses.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public class GuardrailEngine
 {
 

@@ -2,8 +2,7 @@ package stark.dataworks.coderaider.gundam.core.agent;
 
 /**
  * IAgent implements agent definitions and lookup used by runners and handoff resolution.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public interface IAgent
 {
     /**

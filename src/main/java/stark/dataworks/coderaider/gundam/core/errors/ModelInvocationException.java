@@ -2,8 +2,7 @@ package stark.dataworks.coderaider.gundam.core.errors;
 
 /**
  * ModelInvocationException implements core runtime responsibilities.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public class ModelInvocationException extends AgentsException
 {
 

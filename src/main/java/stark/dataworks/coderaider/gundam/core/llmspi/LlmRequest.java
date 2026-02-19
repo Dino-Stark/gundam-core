@@ -12,8 +12,7 @@ import stark.dataworks.coderaider.gundam.core.tool.ToolDefinition;
 
 /**
  * LlmRequest implements provider-agnostic model invocation contracts.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 @Getter
 public class LlmRequest
 {

@@ -6,8 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * InMemorySessionStore implements session persistence and restoration.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public class InMemorySessionStore implements SessionStore
 {
 

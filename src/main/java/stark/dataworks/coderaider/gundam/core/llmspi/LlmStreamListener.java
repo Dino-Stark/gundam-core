@@ -5,8 +5,7 @@ import stark.dataworks.coderaider.gundam.core.model.ToolCall;
 
 /**
  * LlmStreamListener implements provider-agnostic model invocation contracts.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 @FunctionalInterface
 public interface LlmStreamListener
 {

@@ -7,8 +7,7 @@ import stark.dataworks.coderaider.gundam.core.event.RunEvent;
 
 /**
  * RunEventPublisher implements core runtime responsibilities.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public class RunEventPublisher
 {
 

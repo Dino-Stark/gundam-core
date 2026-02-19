@@ -4,8 +4,7 @@ import java.util.Map;
 
 /**
  * IToolHook implements runtime lifecycle extension points.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public interface IToolHook
 {
 

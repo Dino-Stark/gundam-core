@@ -7,8 +7,7 @@ import stark.dataworks.coderaider.gundam.core.tracing.TraceEvent;
 
 /**
  * TracingProcessors implements run tracing and span publication.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public class TracingProcessors
 {
 

@@ -9,8 +9,7 @@ import java.util.Objects;
 
 /**
  * RunEvent implements run event payloads.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 @Getter
 public class RunEvent
 {

@@ -4,8 +4,7 @@ import stark.dataworks.coderaider.gundam.core.model.ToolCall;
 
 /**
  * ILlmClient implements provider-agnostic model invocation contracts.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public interface ILlmClient
 {
 

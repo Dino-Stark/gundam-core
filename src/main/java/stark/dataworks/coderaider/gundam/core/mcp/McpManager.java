@@ -13,8 +13,7 @@ import stark.dataworks.coderaider.gundam.core.tool.ToolDefinition;
 
 /**
  * McpManager implements MCP server integration and tool bridging.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public class McpManager
 {
 
@@ -137,8 +136,7 @@ public class McpManager
 
     /**
      * McpProxyTool implements MCP server integration and tool bridging.
-     * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
-     */
+     *     */
     private static class McpProxyTool implements ITool
     {
 

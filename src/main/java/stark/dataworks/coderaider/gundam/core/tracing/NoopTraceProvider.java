@@ -2,8 +2,7 @@ package stark.dataworks.coderaider.gundam.core.tracing;
 
 /**
  * NoopTraceProvider implements run tracing and span publication.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public class NoopTraceProvider implements TraceProvider
 {
 

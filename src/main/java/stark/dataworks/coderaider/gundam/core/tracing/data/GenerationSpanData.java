@@ -4,8 +4,7 @@ import java.util.Map;
 
 /**
  * GenerationSpanData implements run tracing and span publication.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public class GenerationSpanData extends SpanData
 {
 

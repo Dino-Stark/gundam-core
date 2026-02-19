@@ -6,8 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * OutputSchemaRegistry implements structured output schema validation.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public class OutputSchemaRegistry
 {
 

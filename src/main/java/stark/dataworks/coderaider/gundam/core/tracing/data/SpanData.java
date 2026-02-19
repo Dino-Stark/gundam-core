@@ -6,8 +6,7 @@ import java.util.Map;
 
 /**
  * SpanData implements run tracing and span publication.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 @Getter
 public class SpanData
 {

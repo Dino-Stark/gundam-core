@@ -14,8 +14,7 @@ import stark.dataworks.coderaider.gundam.core.result.RunItem;
 
 /**
  * RunnerContext implements end-to-end run orchestration including retries, guardrails, handoffs, and events.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 @Getter
 public class RunnerContext
 {

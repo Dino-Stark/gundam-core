@@ -6,8 +6,7 @@ import java.util.Objects;
 
 /**
  * ToolApprovalDecision implements tool approval workflow.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 @Getter
 public class ToolApprovalDecision
 {

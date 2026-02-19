@@ -6,8 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * ToolRegistry implements tool contracts, schema metadata, and executable tool registration.
- * It keeps this concern isolated so the kernel remains modular and provider-agnostic.
- */
+ * */
 public class ToolRegistry implements IToolRegistry
 {
 
