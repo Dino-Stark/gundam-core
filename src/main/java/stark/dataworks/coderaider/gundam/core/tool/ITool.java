@@ -4,7 +4,7 @@ import java.util.Map;
 
 /**
  * ITool implements tool contracts, schema metadata, and executable tool registration.
- * */
+ */
 public interface ITool
 {
 

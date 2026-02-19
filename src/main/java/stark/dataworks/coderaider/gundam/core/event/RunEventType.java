@@ -2,7 +2,7 @@ package stark.dataworks.coderaider.gundam.core.event;
 
 /**
  * RunEventType implements run event payloads.
- * */
+ */
 public enum RunEventType
 {
     RUN_STARTED,

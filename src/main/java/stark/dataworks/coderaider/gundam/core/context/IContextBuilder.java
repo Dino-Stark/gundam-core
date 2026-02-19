@@ -8,7 +8,7 @@ import stark.dataworks.coderaider.gundam.core.model.Message;
 
 /**
  * IContextBuilder implements prompt/context assembly before model calls.
- * */
+ */
 public interface IContextBuilder
 {
 

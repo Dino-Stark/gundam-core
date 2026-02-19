@@ -6,7 +6,7 @@ import java.util.Objects;
 
 /**
  * RunErrorData implements error classification and handler dispatch.
- * */
+ */
 @Getter
 public class RunErrorData
 {

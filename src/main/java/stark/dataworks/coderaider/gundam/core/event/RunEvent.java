@@ -9,7 +9,7 @@ import java.util.Objects;
 
 /**
  * RunEvent implements run event payloads.
- * */
+ */
 @Getter
 public class RunEvent
 {

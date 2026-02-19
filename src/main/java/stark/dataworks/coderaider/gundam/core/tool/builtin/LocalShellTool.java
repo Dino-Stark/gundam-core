@@ -10,7 +10,7 @@ import stark.dataworks.coderaider.gundam.core.tool.ToolDefinition;
 
 /**
  * LocalShellTool implements tool contracts, schema metadata, and executable tool registration.
- * */
+ */
 public class LocalShellTool extends AbstractBuiltinTool
 {
 

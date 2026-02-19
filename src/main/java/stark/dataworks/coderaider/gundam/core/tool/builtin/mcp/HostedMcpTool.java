@@ -8,7 +8,7 @@ import stark.dataworks.coderaider.gundam.core.tool.ToolDefinition;
 
 /**
  * HostedMcpTool implements tool contracts, schema metadata, and executable tool registration.
- * */
+ */
 public class HostedMcpTool implements ITool
 {
 

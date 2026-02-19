@@ -11,7 +11,7 @@ import stark.dataworks.coderaider.gundam.core.metrics.TokenUsage;
 
 /**
  * RunResult implements normalized run result structures.
- * */
+ */
 @Getter
 public class RunResult
 {

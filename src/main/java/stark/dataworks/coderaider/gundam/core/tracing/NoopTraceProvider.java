@@ -2,7 +2,7 @@ package stark.dataworks.coderaider.gundam.core.tracing;
 
 /**
  * NoopTraceProvider implements run tracing and span publication.
- * */
+ */
 public class NoopTraceProvider implements TraceProvider
 {
 

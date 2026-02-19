@@ -2,7 +2,7 @@ package stark.dataworks.coderaider.gundam.core.runerror;
 
 /**
  * RunErrorKind implements error classification and handler dispatch.
- * */
+ */
 public enum RunErrorKind
 {
     MAX_TURNS,

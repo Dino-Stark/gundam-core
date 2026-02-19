@@ -1,13 +1,15 @@
 package stark.dataworks.coderaider.gundam.core.guardrail;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 import java.util.Objects;
 
 /**
  * GuardrailDecision implements input/output policy evaluation around model responses.
- * */
+ */
 @Getter
+@AllArgsConstructor
 public class GuardrailDecision
 {
 
@@ -20,17 +22,6 @@ public class GuardrailDecision
      * Internal state for reason; used while coordinating runtime behavior.
      */
     private final String reason;
-
-    /**
-     * Performs guardrail decision as part of GuardrailDecision runtime responsibilities.
-     * @param allowed The allowed used by this operation.
-     * @param reason The reason used by this operation.
-     */
-    private GuardrailDecision(boolean allowed, String reason)
-    {
-        this.allowed = allowed;
-        this.reason = reason == null ? "" : reason;
-    }
 
     /**
      * Performs allow as part of GuardrailDecision runtime responsibilities.

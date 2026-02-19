@@ -10,7 +10,7 @@ import stark.dataworks.coderaider.gundam.core.model.Role;
 
 /**
  * DefaultContextBuilder implements prompt/context assembly before model calls.
- * */
+ */
 public class DefaultContextBuilder implements IContextBuilder
 {
 

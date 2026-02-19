@@ -4,7 +4,7 @@ import lombok.Getter;
 
 /**
  * RetryPolicy implements core runtime responsibilities.
- * */
+ */
 @Getter
 public class RetryPolicy
 {

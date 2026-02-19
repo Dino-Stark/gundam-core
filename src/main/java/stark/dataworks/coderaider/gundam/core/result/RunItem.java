@@ -8,7 +8,7 @@ import java.util.Objects;
 
 /**
  * RunItem implements normalized run result structures.
- * */
+ */
 @Getter
 public class RunItem
 {

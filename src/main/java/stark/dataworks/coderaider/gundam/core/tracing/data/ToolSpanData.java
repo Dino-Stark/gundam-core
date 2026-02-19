@@ -4,7 +4,7 @@ import java.util.Map;
 
 /**
  * ToolSpanData implements run tracing and span publication.
- * */
+ */
 public class ToolSpanData extends SpanData
 {
 

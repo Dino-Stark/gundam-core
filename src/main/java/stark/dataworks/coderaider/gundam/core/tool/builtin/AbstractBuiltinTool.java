@@ -9,7 +9,7 @@ import stark.dataworks.coderaider.gundam.core.tool.ToolDefinition;
 
 /**
  * AbstractBuiltinTool implements tool contracts, schema metadata, and executable tool registration.
- * */
+ */
 public abstract class AbstractBuiltinTool implements ITool
 {
 

@@ -11,7 +11,7 @@ import stark.dataworks.coderaider.gundam.core.metrics.TokenUsageTracker;
 
 /**
  * ExecutionContext implements single-step execution that binds model calls, tool calls, and memory updates.
- * */
+ */
 @Getter
 public class ExecutionContext
 {

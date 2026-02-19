@@ -4,7 +4,7 @@ import java.util.Map;
 
 /**
  * OutputSchema implements structured output schema validation.
- * */
+ */
 public interface OutputSchema
 {
 

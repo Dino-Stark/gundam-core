@@ -6,7 +6,7 @@ import java.util.Objects;
 
 /**
  * Handoff implements agent transfer rules between specialized agents.
- * */
+ */
 @Getter
 public class Handoff
 {

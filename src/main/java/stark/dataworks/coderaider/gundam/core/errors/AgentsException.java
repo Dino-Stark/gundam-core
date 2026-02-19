@@ -2,7 +2,7 @@ package stark.dataworks.coderaider.gundam.core.errors;
 
 /**
  * AgentsException implements core runtime responsibilities.
- * */
+ */
 public class AgentsException extends RuntimeException
 {
 

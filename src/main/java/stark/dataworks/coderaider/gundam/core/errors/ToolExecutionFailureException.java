@@ -2,7 +2,7 @@ package stark.dataworks.coderaider.gundam.core.errors;
 
 /**
  * ToolExecutionFailureException implements core runtime responsibilities.
- * */
+ */
 public class ToolExecutionFailureException extends AgentsException
 {
 

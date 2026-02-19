@@ -2,8 +2,8 @@ package stark.dataworks.coderaider.gundam.core.approval;
 
 /**
  * AllowAllToolApprovalPolicy implements tool approval workflow.
- * */
-public class AllowAllToolApprovalPolicy implements ToolApprovalPolicy
+ */
+public class AllowAllToolApprovalPolicy implements IToolApprovalPolicy
 {
 
     /**

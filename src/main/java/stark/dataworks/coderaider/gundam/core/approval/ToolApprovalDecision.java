@@ -6,7 +6,7 @@ import java.util.Objects;
 
 /**
  * ToolApprovalDecision implements tool approval workflow.
- * */
+ */
 @Getter
 public class ToolApprovalDecision
 {

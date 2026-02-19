@@ -4,7 +4,7 @@ import lombok.Getter;
 
 /**
  * OutputValidationResult implements structured output schema validation.
- * */
+ */
 @Getter
 public class OutputValidationResult
 {

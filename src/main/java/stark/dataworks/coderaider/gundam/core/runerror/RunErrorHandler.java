@@ -2,7 +2,7 @@ package stark.dataworks.coderaider.gundam.core.runerror;
 
 /**
  * RunErrorHandler implements error classification and handler dispatch.
- * */
+ */
 public interface RunErrorHandler
 {
 

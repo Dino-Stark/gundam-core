@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * ToolRegistry implements tool contracts, schema metadata, and executable tool registration.
- * */
+ */
 public class ToolRegistry implements IToolRegistry
 {
 

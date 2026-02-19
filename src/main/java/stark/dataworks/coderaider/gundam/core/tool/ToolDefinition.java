@@ -8,7 +8,7 @@ import java.util.Objects;
 
 /**
  * ToolDefinition implements tool contracts, schema metadata, and executable tool registration.
- * */
+ */
 @Getter
 public class ToolDefinition
 {

@@ -11,7 +11,7 @@ import stark.dataworks.coderaider.gundam.core.model.Message;
 
 /**
  * Session implements session persistence and restoration.
- * */
+ */
 @Getter
 @AllArgsConstructor
 public class Session

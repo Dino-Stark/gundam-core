@@ -7,7 +7,7 @@ import java.util.Objects;
 
 /**
  * McpServerConfig implements MCP server integration and tool bridging.
- * */
+ */
 @Getter
 public class McpServerConfig
 {

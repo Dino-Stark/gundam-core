@@ -9,7 +9,7 @@ import lombok.AllArgsConstructor;
 import stark.dataworks.coderaider.gundam.core.agent.IAgent;
 import stark.dataworks.coderaider.gundam.core.agent.IAgentRegistry;
 import stark.dataworks.coderaider.gundam.core.approval.ToolApprovalDecision;
-import stark.dataworks.coderaider.gundam.core.approval.ToolApprovalPolicy;
+import stark.dataworks.coderaider.gundam.core.approval.IToolApprovalPolicy;
 import stark.dataworks.coderaider.gundam.core.approval.ToolApprovalRequest;
 import stark.dataworks.coderaider.gundam.core.context.IContextBuilder;
 import stark.dataworks.coderaider.gundam.core.errors.GuardrailTripwireException;
@@ -111,7 +111,7 @@ public class AgentRunner
     /**
      * Internal state for tool approval policy; used while coordinating runtime behavior.
      */
-    private final ToolApprovalPolicy toolApprovalPolicy;
+    private final IToolApprovalPolicy toolApprovalPolicy;
 
     /**
      * Internal state for output schema registry; used while coordinating runtime behavior.

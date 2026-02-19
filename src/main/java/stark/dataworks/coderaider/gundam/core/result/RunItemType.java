@@ -2,7 +2,7 @@ package stark.dataworks.coderaider.gundam.core.result;
 
 /**
  * RunItemType implements normalized run result structures.
- * */
+ */
 public enum RunItemType
 {
     USER_MESSAGE,

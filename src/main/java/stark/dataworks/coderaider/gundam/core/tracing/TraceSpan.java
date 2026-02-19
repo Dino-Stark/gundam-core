@@ -2,7 +2,7 @@ package stark.dataworks.coderaider.gundam.core.tracing;
 
 /**
  * TraceSpan implements run tracing and span publication.
- * */
+ */
 public interface TraceSpan
 {
 

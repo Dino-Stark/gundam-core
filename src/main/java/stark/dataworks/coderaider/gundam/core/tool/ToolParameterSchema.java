@@ -6,7 +6,7 @@ import java.util.Objects;
 
 /**
  * ToolParameterSchema implements tool contracts, schema metadata, and executable tool registration.
- * */
+ */
 @Getter
 public class ToolParameterSchema
 {

@@ -2,7 +2,7 @@ package stark.dataworks.coderaider.gundam.core.errors;
 
 /**
  * HandoffDeniedException implements core runtime responsibilities.
- * */
+ */
 public class HandoffDeniedException extends AgentsException
 {
 

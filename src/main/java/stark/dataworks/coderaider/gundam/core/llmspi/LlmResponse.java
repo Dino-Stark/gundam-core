@@ -14,7 +14,7 @@ import stark.dataworks.coderaider.gundam.core.multimodal.GeneratedAsset;
 
 /**
  * LlmResponse implements provider-agnostic model invocation contracts.
- * */
+ */
 @Getter
 public class LlmResponse
 {

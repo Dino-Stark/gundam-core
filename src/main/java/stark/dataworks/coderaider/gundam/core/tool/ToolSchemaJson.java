@@ -6,7 +6,7 @@ import java.util.Map;
 
 /**
  * ToolSchemaJson implements tool contracts, schema metadata, and executable tool registration.
- * */
+ */
 public final class ToolSchemaJson
 {
 

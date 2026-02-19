@@ -12,7 +12,7 @@ import stark.dataworks.coderaider.gundam.core.tool.ToolDefinition;
 
 /**
  * LlmRequest implements provider-agnostic model invocation contracts.
- * */
+ */
 @Getter
 public class LlmRequest
 {

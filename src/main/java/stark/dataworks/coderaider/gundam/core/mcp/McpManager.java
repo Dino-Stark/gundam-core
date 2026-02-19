@@ -13,7 +13,7 @@ import stark.dataworks.coderaider.gundam.core.tool.ToolDefinition;
 
 /**
  * McpManager implements MCP server integration and tool bridging.
- * */
+ */
 public class McpManager
 {
 

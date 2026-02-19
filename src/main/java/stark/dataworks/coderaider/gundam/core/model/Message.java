@@ -12,7 +12,7 @@ import stark.dataworks.coderaider.gundam.core.multimodal.MessagePartType;
 
 /**
  * Message implements core runtime responsibilities.
- * */
+ */
 @Getter
 public class Message
 {

@@ -8,7 +8,7 @@ import java.util.Objects;
 
 /**
  * ToolApprovalRequest implements tool approval workflow.
- * */
+ */
 @Getter
 public class ToolApprovalRequest
 {

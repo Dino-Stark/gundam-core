@@ -7,7 +7,7 @@ import java.util.Objects;
 
 /**
  * McpToolDescriptor implements MCP server integration and tool bridging.
- * */
+ */
 @Getter
 public class McpToolDescriptor
 {

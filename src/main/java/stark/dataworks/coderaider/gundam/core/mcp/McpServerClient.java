@@ -5,7 +5,7 @@ import java.util.Map;
 
 /**
  * McpServerClient implements MCP server integration and tool bridging.
- * */
+ */
 public interface McpServerClient
 {
 

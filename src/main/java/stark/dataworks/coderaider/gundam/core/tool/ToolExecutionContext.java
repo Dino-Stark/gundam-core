@@ -6,7 +6,7 @@ import java.util.Map;
 
 /**
  * ToolExecutionContext implements tool contracts, schema metadata, and executable tool registration.
- * */
+ */
 @Getter
 public class ToolExecutionContext
 {

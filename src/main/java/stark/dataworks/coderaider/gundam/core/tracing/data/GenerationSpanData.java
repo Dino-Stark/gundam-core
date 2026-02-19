@@ -4,7 +4,7 @@ import java.util.Map;
 
 /**
  * GenerationSpanData implements run tracing and span publication.
- * */
+ */
 public class GenerationSpanData extends SpanData
 {
 

@@ -4,7 +4,7 @@ import lombok.Getter;
 
 /**
  * RunErrorHandlerResult implements error classification and handler dispatch.
- * */
+ */
 @Getter
 public class RunErrorHandlerResult
 {

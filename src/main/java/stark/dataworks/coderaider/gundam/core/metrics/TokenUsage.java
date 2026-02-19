@@ -4,7 +4,7 @@ import lombok.Getter;
 
 /**
  * TokenUsage implements token usage tracking.
- * */
+ */
 @Getter
 public class TokenUsage
 {

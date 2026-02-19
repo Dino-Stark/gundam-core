@@ -13,7 +13,7 @@ import stark.dataworks.coderaider.gundam.core.tool.ToolDefinition;
 
 /**
  * VideoGenerationTool implements tool contracts, schema metadata, and executable tool registration.
- * */
+ */
 public class VideoGenerationTool extends AbstractBuiltinTool
 {
     private final IVideoGenerator videoGenerator;

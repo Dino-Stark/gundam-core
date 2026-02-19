@@ -6,7 +6,7 @@ import java.util.Objects;
 
 /**
  * ToolResult implements core runtime responsibilities.
- * */
+ */
 @Getter
 public class ToolResult
 {

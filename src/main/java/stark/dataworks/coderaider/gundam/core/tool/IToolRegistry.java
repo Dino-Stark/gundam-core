@@ -4,7 +4,7 @@ import java.util.Optional;
 
 /**
  * IToolRegistry implements tool contracts, schema metadata, and executable tool registration.
- * */
+ */
 public interface IToolRegistry
 {
 

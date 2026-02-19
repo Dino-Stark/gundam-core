@@ -2,7 +2,7 @@ package stark.dataworks.coderaider.gundam.core.tool;
 
 /**
  * ToolCategory implements tool contracts, schema metadata, and executable tool registration.
- * */
+ */
 public enum ToolCategory
 {
     FUNCTION,

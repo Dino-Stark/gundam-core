@@ -4,7 +4,7 @@ import java.util.Map;
 
 /**
  * IToolHook implements runtime lifecycle extension points.
- * */
+ */
 public interface IToolHook
 {
 

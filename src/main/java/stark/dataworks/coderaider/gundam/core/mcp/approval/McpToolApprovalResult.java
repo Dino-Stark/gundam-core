@@ -2,7 +2,7 @@ package stark.dataworks.coderaider.gundam.core.mcp.approval;
 
 /**
  * McpToolApprovalResult implements MCP server integration and tool bridging.
- * */
+ */
 public record McpToolApprovalResult(boolean approved, String reason)
 {
 

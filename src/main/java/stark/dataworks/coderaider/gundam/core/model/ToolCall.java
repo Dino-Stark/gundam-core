@@ -8,7 +8,7 @@ import java.util.Objects;
 
 /**
  * ToolCall implements core runtime responsibilities.
- * */
+ */
 @Getter
 public class ToolCall
 {

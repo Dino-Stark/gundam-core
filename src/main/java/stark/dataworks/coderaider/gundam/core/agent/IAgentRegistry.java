@@ -4,7 +4,7 @@ import java.util.Optional;
 
 /**
  * IAgentRegistry implements agent definitions and lookup used by runners and handoff resolution.
- * */
+ */
 public interface IAgentRegistry
 {
 

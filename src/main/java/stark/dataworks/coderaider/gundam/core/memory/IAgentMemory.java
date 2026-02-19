@@ -6,7 +6,7 @@ import stark.dataworks.coderaider.gundam.core.model.Message;
 
 /**
  * IAgentMemory implements conversation state retention between turns.
- * */
+ */
 public interface IAgentMemory
 {
 

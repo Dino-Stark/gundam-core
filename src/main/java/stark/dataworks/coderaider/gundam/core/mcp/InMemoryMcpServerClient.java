@@ -7,7 +7,7 @@ import java.util.function.Function;
 
 /**
  * InMemoryMcpServerClient implements MCP server integration and tool bridging.
- * */
+ */
 public class InMemoryMcpServerClient implements McpServerClient
 {
 

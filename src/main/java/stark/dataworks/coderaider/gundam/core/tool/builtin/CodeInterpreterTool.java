@@ -7,7 +7,7 @@ import stark.dataworks.coderaider.gundam.core.tool.ToolDefinition;
 
 /**
  * CodeInterpreterTool implements tool contracts, schema metadata, and executable tool registration.
- * */
+ */
 public class CodeInterpreterTool extends AbstractBuiltinTool
 {
 

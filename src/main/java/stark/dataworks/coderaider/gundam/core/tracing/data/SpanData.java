@@ -6,7 +6,7 @@ import java.util.Map;
 
 /**
  * SpanData implements run tracing and span publication.
- * */
+ */
 @Getter
 public class SpanData
 {
