@@ -25,7 +25,7 @@ public class Example07AgentWithSkillsStreaming
 {
     public static void main(String[] args)
     {
-        String model = args.length > 0 ? args[0] : "Qwen/Qwen3-4B";
+        String model = args.length > 0 ? args[0] : "Qwen/Qwen3-Coder-480B-A35B-Instruct";
         String apiKey = args.length > 1 ? args[1] : System.getenv("MODEL_SCOPE_API_KEY");
         String prompt = args.length > 2 ? args[2] : "Give me a short checklist to review an unfamiliar Java repository.";
         String skillId = args.length > 3 ? args[3] : System.getenv("ANTHROPIC_SKILL_ID");
