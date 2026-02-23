@@ -551,7 +551,10 @@ public class AgentRunner
         }
         else
         {
-            finalOutput = "Run failed: " + error.getMessage();
+            String errorMessage = error instanceof ModelInvocationException mie 
+                ? mie.getFullMessage() 
+                : error.getMessage();
+            finalOutput = "Run failed: " + errorMessage;
         }
 
         context.getItems().add(new RunItem(RunItemType.SYSTEM_EVENT, finalOutput, Map.of("errorKind", kind.name())));
