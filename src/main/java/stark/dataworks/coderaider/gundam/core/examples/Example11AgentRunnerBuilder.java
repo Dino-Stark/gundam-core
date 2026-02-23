@@ -7,6 +7,7 @@ import stark.dataworks.coderaider.gundam.core.agent.AgentDefinition;
 import stark.dataworks.coderaider.gundam.core.agent.AgentRegistry;
 import stark.dataworks.coderaider.gundam.core.event.RunEvent;
 import stark.dataworks.coderaider.gundam.core.event.RunEventType;
+import stark.dataworks.coderaider.gundam.core.llmspi.LlmClientRegistry;
 import stark.dataworks.coderaider.gundam.core.llmspi.adapter.ModelScopeLlmClient;
 import stark.dataworks.coderaider.gundam.core.result.RunResult;
 import stark.dataworks.coderaider.gundam.core.runner.AgentRunner;
@@ -43,12 +44,12 @@ public class Example11AgentRunnerBuilder
         AgentRegistry agentRegistry = new AgentRegistry();
         agentRegistry.register(new Agent(definition));
 
-        AgentRunner runner = ExampleSupport.runnerWithPublisher(
-            new ModelScopeLlmClient(apiKey, model),
-            new ToolRegistry(),
-            agentRegistry,
-            null,
-            createConsoleStreamingPublisher());
+        AgentRunner runner = AgentRunner.builder()
+            .llmClientRegistry(new LlmClientRegistry(Map.of("Qwen", new ModelScopeLlmClient(apiKey, model)), "Qwen"))
+            .toolRegistry(new ToolRegistry())
+            .agentRegistry(agentRegistry)
+            .eventPublisher(createConsoleStreamingPublisher())
+            .build();
 
         RunResult result = runner.runStreamed(
             new Agent(definition), 

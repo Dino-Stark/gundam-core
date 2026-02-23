@@ -27,6 +27,7 @@ import stark.dataworks.coderaider.gundam.core.handoff.Handoff;
 import stark.dataworks.coderaider.gundam.core.handoff.HandoffRouter;
 import stark.dataworks.coderaider.gundam.core.hook.HookManager;
 import stark.dataworks.coderaider.gundam.core.llmspi.ILlmClient;
+import stark.dataworks.coderaider.gundam.core.llmspi.LlmClientRegistry;
 import stark.dataworks.coderaider.gundam.core.llmspi.LlmOptions;
 import stark.dataworks.coderaider.gundam.core.llmspi.LlmRequest;
 import stark.dataworks.coderaider.gundam.core.llmspi.LlmResponse;
@@ -63,6 +64,15 @@ import stark.dataworks.coderaider.gundam.core.tracing.ITraceSpan;
  * <p>
  * This runner combines context rendering, model calls, tool execution, guardrails, handoff routing, retry policy,
  * tracing, and event publication so callers can execute a complete OpenAI-Agents-style loop through one entry point.
+ * <p>
+ * Example builder usage:
+ * <pre>{@code
+ * AgentRunner runner = AgentRunner.builder()
+ *     .llmClientRegistry(new LlmClientRegistry(Map.of("modelscope", llmClient), "modelscope"))
+ *     .toolRegistry(toolRegistry)
+ *     .agentRegistry(agentRegistry)
+ *     .build();
+ * }</pre>
  */
 @AllArgsConstructor
 public class AgentRunner
@@ -70,7 +80,7 @@ public class AgentRunner
     /**
      * Internal state for llm client; used while coordinating runtime behavior.
      */
-    private final ILlmClient llmClient;
+    private final LlmClientRegistry llmClientRegistry;
 
     /**
      * Internal state for tool registry; used while coordinating runtime behavior.
@@ -132,16 +142,35 @@ public class AgentRunner
      */
     private final RunEventPublisher eventPublisher;
 
-    public static Builder builder(ILlmClient llmClient, IToolRegistry toolRegistry, IAgentRegistry agentRegistry)
+
+    public AgentRunner(ILlmClient llmClient,
+                       IToolRegistry toolRegistry,
+                       IAgentRegistry agentRegistry,
+                       IContextBuilder contextBuilder,
+                       HookManager hookManager,
+                       GuardrailEngine guardrailEngine,
+                       HandoffRouter handoffRouter,
+                       ISessionStore sessionStore,
+                       ITraceProvider traceProvider,
+                       IToolApprovalPolicy toolApprovalPolicy,
+                       OutputSchemaRegistry outputSchemaRegistry,
+                       OutputValidator outputValidator,
+                       RunEventPublisher eventPublisher)
     {
-        return new Builder(llmClient, toolRegistry, agentRegistry);
+        this(LlmClientRegistry.single(llmClient), toolRegistry, agentRegistry, contextBuilder, hookManager, guardrailEngine,
+            handoffRouter, sessionStore, traceProvider, toolApprovalPolicy, outputSchemaRegistry, outputValidator, eventPublisher);
+    }
+
+    public static Builder builder()
+    {
+        return new Builder();
     }
 
     public static final class Builder
     {
-        private final ILlmClient llmClient;
-        private final IToolRegistry toolRegistry;
-        private final IAgentRegistry agentRegistry;
+        private LlmClientRegistry llmClientRegistry;
+        private IToolRegistry toolRegistry;
+        private IAgentRegistry agentRegistry;
         private IContextBuilder contextBuilder = new stark.dataworks.coderaider.gundam.core.context.DefaultContextBuilder();
         private HookManager hookManager = new HookManager();
         private GuardrailEngine guardrailEngine = new GuardrailEngine();
@@ -153,13 +182,14 @@ public class AgentRunner
         private OutputValidator outputValidator = new OutputValidator();
         private RunEventPublisher eventPublisher = new RunEventPublisher();
 
-        private Builder(ILlmClient llmClient, IToolRegistry toolRegistry, IAgentRegistry agentRegistry)
+        private Builder()
         {
-            this.llmClient = Objects.requireNonNull(llmClient, "llmClient");
-            this.toolRegistry = Objects.requireNonNull(toolRegistry, "toolRegistry");
-            this.agentRegistry = Objects.requireNonNull(agentRegistry, "agentRegistry");
         }
 
+        public Builder llmClient(ILlmClient value) { this.llmClientRegistry = LlmClientRegistry.single(Objects.requireNonNull(value, "llmClient")); return this; }
+        public Builder llmClientRegistry(LlmClientRegistry value) { this.llmClientRegistry = Objects.requireNonNull(value, "llmClientRegistry"); return this; }
+        public Builder toolRegistry(IToolRegistry value) { this.toolRegistry = Objects.requireNonNull(value, "toolRegistry"); return this; }
+        public Builder agentRegistry(IAgentRegistry value) { this.agentRegistry = Objects.requireNonNull(value, "agentRegistry"); return this; }
         public Builder contextBuilder(IContextBuilder value) { this.contextBuilder = Objects.requireNonNull(value); return this; }
         public Builder hookManager(HookManager value) { this.hookManager = Objects.requireNonNull(value); return this; }
         public Builder guardrailEngine(GuardrailEngine value) { this.guardrailEngine = Objects.requireNonNull(value); return this; }
@@ -173,7 +203,10 @@ public class AgentRunner
 
         public AgentRunner build()
         {
-            return new AgentRunner(llmClient, toolRegistry, agentRegistry, contextBuilder, hookManager, guardrailEngine, handoffRouter,
+            Objects.requireNonNull(llmClientRegistry, "llmClient or llmClientRegistry must be set");
+            Objects.requireNonNull(toolRegistry, "toolRegistry must be set");
+            Objects.requireNonNull(agentRegistry, "agentRegistry must be set");
+            return new AgentRunner(llmClientRegistry, toolRegistry, agentRegistry, contextBuilder, hookManager, guardrailEngine, handoffRouter,
                 sessionStore, traceProvider, toolApprovalPolicy, outputSchemaRegistry, outputValidator, eventPublisher);
         }
     }
@@ -278,12 +311,16 @@ public class AgentRunner
                     providerOptions.put("responseFormatJsonSchema", OutputSchemaMapper.toOpenAiJsonSchema(outputType));
                 }
 
+                ILlmClient llmClient = llmClientRegistry.resolve(context.getCurrentAgent().definition().getModel(), providerOptions);
+                Map<String, Object> providerOptionsForRequest = new HashMap<>(providerOptions);
+                providerOptionsForRequest.remove("llmClient");
+
                 LlmRequest request = new LlmRequest(context.getCurrentAgent().definition().getModel(), messages, toolDefinitions,
-                    new LlmOptions(runConfiguration.getTemperature(), runConfiguration.getMaxOutputTokens(), runConfiguration.getToolChoice(), responseFormat, providerOptions));
+                    new LlmOptions(runConfiguration.getTemperature(), runConfiguration.getMaxOutputTokens(), runConfiguration.getToolChoice(), responseFormat, providerOptionsForRequest));
 
                 emit(context, runHooks, RunEventType.MODEL_REQUESTED, Map.of("model", request.getModel(), "messages", request.getMessages().size()));
                 StreamCapture streamCapture = new StreamCapture();
-                LlmResponse response = invokeModel(request, runConfiguration, streamModelResponse, streamListenerForRunner(context, runHooks, streamCapture));
+                LlmResponse response = invokeModel(llmClient, request, runConfiguration, streamModelResponse, streamListenerForRunner(context, runHooks, streamCapture));
                 LlmResponse effectiveResponse = mergeWithStreamedResponse(response, streamCapture);
                 emit(context, runHooks, RunEventType.MODEL_RESPONDED, Map.of("finishReason", effectiveResponse.getFinishReason()));
                 context.getUsageTracker().add(effectiveResponse.getTokenUsage());
@@ -598,7 +635,8 @@ public class AgentRunner
      * @param streamListener The stream listener used by this operation.
      * @return The value produced by this operation.
      */
-    private LlmResponse invokeModel(LlmRequest request,
+    private LlmResponse invokeModel(ILlmClient llmClient,
+                                    LlmRequest request,
                                     RunConfiguration config,
                                     boolean streamModelResponse,
                                     ILlmStreamListener streamListener)
