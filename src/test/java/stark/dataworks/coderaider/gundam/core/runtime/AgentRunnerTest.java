@@ -20,6 +20,7 @@ import stark.dataworks.coderaider.gundam.core.guardrail.GuardrailEngine;
 import stark.dataworks.coderaider.gundam.core.handoff.HandoffRouter;
 import stark.dataworks.coderaider.gundam.core.hook.HookManager;
 import stark.dataworks.coderaider.gundam.core.llmspi.ILlmClient;
+import stark.dataworks.coderaider.gundam.core.llmspi.LlmClientRegistry;
 import stark.dataworks.coderaider.gundam.core.llmspi.LlmRequest;
 import stark.dataworks.coderaider.gundam.core.llmspi.LlmResponse;
 import stark.dataworks.coderaider.gundam.core.llmspi.ILlmStreamListener;
@@ -434,15 +435,15 @@ class AgentRunnerTest
         AgentRegistry agents = new AgentRegistry();
         agents.register(new Agent(def));
 
-        AgentRunner runner = AgentRunner.builder(
-            request ->
+        AgentRunner runner = AgentRunner.builder()
+            .llmClient(request ->
             {
                 assertEquals("json_schema", request.getOptions().getResponseFormat());
                 assertNotNull(request.getOptions().getProviderOptions().get("responseFormatJsonSchema"));
                 return new LlmResponse("{\"title\":\"hello\",\"score\":1}", List.of(), null, new TokenUsage(1, 1), "stop", Map.of("title", "hello", "score", 1));
-            },
-            new ToolRegistry(),
-            agents)
+            })
+            .toolRegistry(new ToolRegistry())
+            .agentRegistry(agents)
             .build();
 
         RunResult result = runner.run(new Agent(def), "go", RunConfiguration.defaults(), new IRunHooks()
@@ -459,10 +460,10 @@ class AgentRunnerTest
         AgentRegistry agents = new AgentRegistry();
         agents.register(new Agent(def));
 
-        AgentRunner runner = AgentRunner.builder(
-            request -> new LlmResponse("ok", List.of(), null, new TokenUsage(1, 1)),
-            new ToolRegistry(),
-            agents)
+        AgentRunner runner = AgentRunner.builder()
+            .llmClient(request -> new LlmResponse("ok", List.of(), null, new TokenUsage(1, 1)))
+            .toolRegistry(new ToolRegistry())
+            .agentRegistry(agents)
             .build();
 
         RunResult result = runner.run(new Agent(def), "hello", RunConfiguration.defaults(), new IRunHooks()
@@ -470,6 +471,32 @@ class AgentRunnerTest
         });
 
         assertEquals("ok", result.getFinalOutput());
+    }
+
+
+    @Test
+    void resolvesLlmClientFromRegistryByModelPrefix()
+    {
+        AgentDefinition def = baseDef("multi-client");
+        def.setModel("Qwen/Qwen3-4B");
+
+        AgentRegistry agents = new AgentRegistry();
+        agents.register(new Agent(def));
+
+        ILlmClient qwenClient = request -> new LlmResponse("qwen-ok", List.of(), null, new TokenUsage(1, 1));
+        ILlmClient defaultClient = request -> new LlmResponse("default-ok", List.of(), null, new TokenUsage(1, 1));
+
+        AgentRunner runner = AgentRunner.builder()
+            .llmClientRegistry(new LlmClientRegistry(Map.of("Qwen", qwenClient, "default", defaultClient), "default"))
+            .toolRegistry(new ToolRegistry())
+            .agentRegistry(agents)
+            .build();
+
+        RunResult result = runner.run(new Agent(def), "hello", RunConfiguration.defaults(), new IRunHooks()
+        {
+        });
+
+        assertEquals("qwen-ok", result.getFinalOutput());
     }
 
     private static final class ScoreSummary
