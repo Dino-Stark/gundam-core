@@ -47,7 +47,11 @@ public class HostedMcpTool implements ITool
     @Override
     public ToolDefinition definition()
     {
-        return new ToolDefinition(toolName, "Hosted MCP proxy tool", java.util.List.of());
+        return manager.resolveToolsAsLocalTools(serverId).stream()
+            .filter(t -> t.definition().getName().equals(toolName))
+            .findFirst()
+            .map(t -> t.definition())
+            .orElse(new ToolDefinition(toolName, "Hosted MCP proxy tool", java.util.List.of()));
     }
 
     /**

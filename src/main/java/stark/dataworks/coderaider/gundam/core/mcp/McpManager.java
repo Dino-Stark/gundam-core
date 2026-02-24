@@ -1,8 +1,10 @@
 package stark.dataworks.coderaider.gundam.core.mcp;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import lombok.AllArgsConstructor;
@@ -11,6 +13,7 @@ import stark.dataworks.coderaider.gundam.core.mcp.approval.IMcpToolApprovalPolic
 import stark.dataworks.coderaider.gundam.core.mcp.approval.McpToolApprovalRequest;
 import stark.dataworks.coderaider.gundam.core.tool.ITool;
 import stark.dataworks.coderaider.gundam.core.tool.ToolDefinition;
+import stark.dataworks.coderaider.gundam.core.tool.ToolParameterSchema;
 
 /**
  * McpManager implements MCP server integration and tool bridging.
@@ -173,7 +176,54 @@ public class McpManager
         @Override
         public ToolDefinition definition()
         {
-            return new ToolDefinition(descriptor.getName(), descriptor.getDescription(), List.of());
+            return new ToolDefinition(descriptor.getName(), descriptor.getDescription(), convertInputSchema(descriptor.getInputSchema()));
+        }
+
+        /**
+         * Converts MCP input schema to tool parameter schemas.
+         * @param inputSchema The input schema from MCP tool descriptor.
+         * @return List of tool parameter schemas.
+         */
+        @SuppressWarnings("unchecked")
+        private List<ToolParameterSchema> convertInputSchema(Map<String, Object> inputSchema)
+        {
+            if (inputSchema == null || !inputSchema.containsKey("properties"))
+            {
+                return List.of();
+            }
+
+            List<ToolParameterSchema> params = new ArrayList<>();
+            Object propsObj = inputSchema.get("properties");
+            if (!(propsObj instanceof Map))
+            {
+                return List.of();
+            }
+
+            Map<String, Object> properties = (Map<String, Object>) propsObj;
+            Set<String> requiredFields = new HashSet<>();
+            Object requiredObj = inputSchema.get("required");
+            if (requiredObj instanceof List)
+            {
+                requiredFields.addAll((List<String>) requiredObj);
+            }
+
+            for (Map.Entry<String, Object> entry : properties.entrySet())
+            {
+                String paramName = entry.getKey();
+                Object paramDef = entry.getValue();
+                if (!(paramDef instanceof Map))
+                {
+                    continue;
+                }
+
+                Map<String, Object> paramInfo = (Map<String, Object>) paramDef;
+                String type = (String) paramInfo.getOrDefault("type", "string");
+                String description = (String) paramInfo.getOrDefault("description", "");
+                boolean required = requiredFields.contains(paramName);
+                params.add(new ToolParameterSchema(paramName, type, required, description));
+            }
+
+            return params;
         }
 
         /**

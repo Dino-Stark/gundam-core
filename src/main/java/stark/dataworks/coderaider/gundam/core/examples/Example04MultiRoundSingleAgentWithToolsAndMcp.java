@@ -9,10 +9,10 @@ import stark.dataworks.coderaider.gundam.core.agent.AgentRegistry;
 import stark.dataworks.coderaider.gundam.core.event.RunEvent;
 import stark.dataworks.coderaider.gundam.core.event.RunEventType;
 import stark.dataworks.coderaider.gundam.core.llmspi.adapter.ModelScopeLlmClient;
+import stark.dataworks.coderaider.gundam.core.mcp.HttpMcpServerClient;
 import stark.dataworks.coderaider.gundam.core.mcp.McpManager;
 import stark.dataworks.coderaider.gundam.core.mcp.McpServerConfiguration;
 import stark.dataworks.coderaider.gundam.core.mcp.McpToolDescriptor;
-import stark.dataworks.coderaider.gundam.core.mcp.StdioMcpServerClient;
 import stark.dataworks.coderaider.gundam.core.result.RunResult;
 import stark.dataworks.coderaider.gundam.core.runner.AgentRunner;
 import stark.dataworks.coderaider.gundam.core.runner.RunConfiguration;
@@ -26,19 +26,20 @@ import stark.dataworks.coderaider.gundam.core.tool.ToolRegistry;
 import stark.dataworks.coderaider.gundam.core.tool.builtin.mcp.HostedMcpTool;
 
 /**
- * 4) How to create a multi-round single agent with tools and MCPs, with streaming output.
+ * 4) How to create a multi-round single agent with tools and MCPs (HTTP transport), with streaming output.
  * 
- * Usage: java Example04MultiRoundSingleAgentWithToolsAndMcp [model] [apiKey] [mcpServerCommand]
+ * Usage: java Example04MultiRoundSingleAgentWithToolsAndMcp [model] [apiKey] [mcpServerUrl]
  * - model: ModelScope model name (default: Qwen/Qwen3-4B)
  * - apiKey: Your ModelScope API key (required, or set MODEL_SCOPE_API_KEY env var)
- * - mcpServerCommand: MCP server command (default: "python src/main/resources/mcp/simple_mcp_server_stdio.py")
+ * - mcpServerUrl: MCP server HTTP URL (default: "http://localhost:8765")
  * 
  * Prerequisites:
  * 1. Install mcp package: pip install mcp[cli]
- * 2. Run this example - the MCP server will be started and terminated automatically.
+ * 2. Start the HTTP MCP server first: python src/main/resources/mcp/simple_mcp_server_http.py
+ * 3. Run this example - it will connect to the HTTP MCP server.
  * 
  * This example demonstrates a multi-round conversation with a single agent
- * that has access to both regular tools and MCP tools.
+ * that has access to both regular tools and MCP tools via HTTP transport.
  */
 public class Example04MultiRoundSingleAgentWithToolsAndMcp
 {
@@ -46,7 +47,7 @@ public class Example04MultiRoundSingleAgentWithToolsAndMcp
     {
         String model = args.length > 0 ? args[0] : "Qwen/Qwen3-4B";
         String apiKey = args.length > 1 ? args[1] : System.getenv("MODEL_SCOPE_API_KEY");
-        String mcpServerCommand = args.length > 2 ? args[2] : "python src/main/resources/mcp/simple_mcp_server_stdio.py";
+        String mcpServerUrl = args.length > 2 ? args[2] : "http://localhost:8765";
 
         if (apiKey == null || apiKey.isBlank())
         {
@@ -55,18 +56,18 @@ public class Example04MultiRoundSingleAgentWithToolsAndMcp
             System.exit(1);
         }
 
-        StdioMcpServerClient mcpClient = new StdioMcpServerClient();
-        
+        HttpMcpServerClient mcpClient = new HttpMcpServerClient();
+
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            System.out.println("\n[MCP] Shutting down MCP server...");
-            mcpClient.disconnect(new McpServerConfiguration("policy-mcp", mcpServerCommand, Map.of()));
+            System.out.println("\n[MCP-HTTP] Disconnecting...");
+            mcpClient.disconnect(new McpServerConfiguration("policy-mcp", mcpServerUrl, Map.of()));
         }));
 
         McpManager mcpManager = new McpManager(mcpClient);
 
         McpServerConfiguration mcpServer = new McpServerConfiguration(
             "policy-mcp",
-            mcpServerCommand,
+            mcpServerUrl,
             Map.of());
         mcpManager.registerServer(mcpServer);
 
@@ -106,7 +107,7 @@ public class Example04MultiRoundSingleAgentWithToolsAndMcp
 
         System.out.println("\n=== Round 2: Policy Constraints ===");
         System.out.print("Streaming output: ");
-        RunResult round2 = runner.runStreamed(agentRegistry.get("hybrid-agent").orElseThrow(), "What policy constraints should I know?", config, ExampleSupport.noopHooks());
+        RunResult round2 = runner.runStreamed(agentRegistry.get("hybrid-agent").orElseThrow(), "What policy constraints should I know about tax?", config, ExampleSupport.noopHooks());
         System.out.println();
         System.out.println("Round 2 output: " + round2.getFinalOutput());
 

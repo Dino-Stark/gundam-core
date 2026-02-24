@@ -5,110 +5,104 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.*;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Stdio-based MCP server client that connects to MCP servers using standard input/output.
+ * HTTP-based MCP server client that connects to MCP servers using SSE transport.
  * <p>
  * This client implements the MCP (Model Context Protocol) JSON-RPC 2.0 protocol
- * over stdio, supporting tool listing and invocation.
+ * over HTTP with SSE, supporting tool listing and invocation.
  * <p>
  * Usage:
  * <pre>
- * StdioMcpServerClient client = new StdioMcpServerClient();
- * McpServerConfiguration config = new McpServerConfiguration("my-server", "python path/to/server.py", Map.of());
+ * HttpMcpServerClient client = new HttpMcpServerClient();
+ * McpServerConfiguration config = new McpServerConfiguration("my-server", "http://localhost:8765", Map.of());
  * client.connect(config);
  * List<McpToolDescriptor> tools = client.listTools(config);
  * String result = client.callTool(config, "add", Map.of("a", 1, "b", 2));
  * </pre>
  */
-public class StdioMcpServerClient implements IMcpServerClient
+public class HttpMcpServerClient implements IMcpServerClient
 {
     private final ObjectMapper objectMapper;
-    private final Map<String, Process> processes;
-    private final Map<String, BufferedWriter> writers;
-    private final Map<String, BufferedReader> readers;
-    private final ExecutorService executor;
-    private final long timeoutSeconds;
+    private final Map<String, String> sessionIds;
+    private final Map<String, Boolean> connectedServers;
+    private final AtomicLong requestId;
+    private final int connectTimeout;
+    private final int readTimeout;
 
-    public StdioMcpServerClient()
+    public HttpMcpServerClient()
     {
-        this(30);
+        this(5000, 30000);
     }
 
-    public StdioMcpServerClient(long timeoutSeconds)
+    public HttpMcpServerClient(int connectTimeout, int readTimeout)
     {
         this.objectMapper = new ObjectMapper();
-        this.processes = new HashMap<>();
-        this.writers = new HashMap<>();
-        this.readers = new HashMap<>();
-        this.executor = Executors.newCachedThreadPool();
-        this.timeoutSeconds = timeoutSeconds;
+        this.sessionIds = new ConcurrentHashMap<>();
+        this.connectedServers = new ConcurrentHashMap<>();
+        this.requestId = new AtomicLong(0);
+        this.connectTimeout = connectTimeout;
+        this.readTimeout = readTimeout;
     }
 
     public void connect(McpServerConfiguration config)
     {
-        if (processes.containsKey(config.getServerId()))
+        if (connectedServers.containsKey(config.getServerId()))
         {
             return;
         }
-        
+
         try
         {
-            String command = config.getEndpoint();
-            System.out.println("[MCP] Starting process: " + command);
+            System.out.println("[MCP-HTTP] Connecting to: " + config.getEndpoint());
             
-            ProcessBuilder pb = new ProcessBuilder(command.split("\\s+"));
-            pb.redirectErrorStream(false);
-            Process process = pb.start();
+            // Generate a session ID for this connection
+            String sessionId = UUID.randomUUID().toString();
+            sessionIds.put(config.getServerId(), sessionId);
             
-            processes.put(config.getServerId(), process);
-            writers.put(config.getServerId(), new BufferedWriter(new OutputStreamWriter(process.getOutputStream())));
-            readers.put(config.getServerId(), new BufferedReader(new InputStreamReader(process.getInputStream())));
-            
-            System.out.println("[MCP] Process started, initializing...");
+            // Initialize the connection
             initialize(config);
-            System.out.println("[MCP] Initialized successfully");
+            connectedServers.put(config.getServerId(), true);
+            System.out.println("[MCP-HTTP] Connected successfully");
         }
         catch (Exception ex)
         {
-            cleanup(config);
             throw new RuntimeException("Failed to connect to MCP server: " + config.getServerId(), ex);
         }
     }
 
-    private void initialize(McpServerConfiguration config)
+    private void initialize(McpServerConfiguration config) throws Exception
     {
-        try
-        {
-            ObjectNode initRequest = createRequest("initialize");
-            ObjectNode params = initRequest.putObject("params");
-            ObjectNode clientInfo = params.putObject("clientInfo");
-            clientInfo.put("name", "gundam-core");
-            clientInfo.put("version", "1.0.0");
-            params.put("protocolVersion", "2024-11-05");
-            ObjectNode capabilities = params.putObject("capabilities");
-            capabilities.putObject("tools");
-            
-            System.out.println("[MCP] Sending initialize request: " + objectMapper.writeValueAsString(initRequest));
-            JsonNode response = sendRequest(config, initRequest);
-            System.out.println("[MCP] Initialize response: " + objectMapper.writeValueAsString(response));
-            
-            ObjectNode initializedRequest = createRequest("notifications/initialized");
-            initializedRequest.remove("id");
-            sendNotification(config, initializedRequest);
-        }
-        catch (Exception ex)
-        {
-            throw new RuntimeException("Failed to initialize MCP server: " + config.getServerId(), ex);
-        }
+        ObjectNode initRequest = createRequest("initialize");
+        ObjectNode params = initRequest.putObject("params");
+        ObjectNode clientInfo = params.putObject("clientInfo");
+        clientInfo.put("name", "gundam-core");
+        clientInfo.put("version", "1.0.0");
+        params.put("protocolVersion", "2024-11-05");
+        ObjectNode capabilities = params.putObject("capabilities");
+        capabilities.putObject("tools");
+
+        System.out.println("[MCP-HTTP] Sending initialize request");
+        JsonNode response = sendRequest(config, initRequest);
+        System.out.println("[MCP-HTTP] Initialized successfully");
+
+        // Send initialized notification
+        ObjectNode initializedRequest = objectMapper.createObjectNode();
+        initializedRequest.put("jsonrpc", "2.0");
+        initializedRequest.put("method", "notifications/initialized");
+        sendNotification(config, initializedRequest);
     }
 
     @Override
@@ -117,10 +111,10 @@ public class StdioMcpServerClient implements IMcpServerClient
         try
         {
             ensureConnected(config);
-            
+
             ObjectNode request = createRequest("tools/list");
             JsonNode response = sendRequest(config, request);
-            
+
             List<McpToolDescriptor> tools = new ArrayList<>();
             JsonNode toolsNode = response.path("result").path("tools");
             if (toolsNode.isArray())
@@ -152,7 +146,7 @@ public class StdioMcpServerClient implements IMcpServerClient
         try
         {
             ensureConnected(config);
-            
+
             ObjectNode request = createRequest("tools/call");
             ObjectNode params = request.putObject("params");
             params.put("name", toolName);
@@ -186,7 +180,7 @@ public class StdioMcpServerClient implements IMcpServerClient
                     }
                 });
             }
-            
+
             JsonNode response = sendRequest(config, request);
             JsonNode content = response.path("result").path("content");
             if (content.isArray() && content.size() > 0)
@@ -216,10 +210,10 @@ public class StdioMcpServerClient implements IMcpServerClient
         try
         {
             ensureConnected(config);
-            
+
             ObjectNode request = createRequest("resources/list");
             JsonNode response = sendRequest(config, request);
-            
+
             List<McpResource> resources = new ArrayList<>();
             JsonNode resourcesNode = response.path("result").path("resources");
             if (resourcesNode.isArray())
@@ -251,11 +245,11 @@ public class StdioMcpServerClient implements IMcpServerClient
         try
         {
             ensureConnected(config);
-            
+
             ObjectNode request = createRequest("resources/read");
             ObjectNode params = request.putObject("params");
             params.put("uri", uri);
-            
+
             JsonNode response = sendRequest(config, request);
             JsonNode contents = response.path("result").path("contents");
             if (contents.isArray() && contents.size() > 0)
@@ -275,7 +269,7 @@ public class StdioMcpServerClient implements IMcpServerClient
 
     private void ensureConnected(McpServerConfiguration config)
     {
-        if (!processes.containsKey(config.getServerId()))
+        if (!connectedServers.containsKey(config.getServerId()))
         {
             connect(config);
         }
@@ -285,110 +279,103 @@ public class StdioMcpServerClient implements IMcpServerClient
     {
         ObjectNode request = objectMapper.createObjectNode();
         request.put("jsonrpc", "2.0");
-        request.put("id", String.valueOf(System.currentTimeMillis()));
+        request.put("id", String.valueOf(requestId.incrementAndGet()));
         request.put("method", method);
         return request;
     }
 
     private JsonNode sendRequest(McpServerConfiguration config, ObjectNode request) throws Exception
     {
-        BufferedWriter writer = writers.get(config.getServerId());
-        BufferedReader reader = readers.get(config.getServerId());
-        
-        if (writer == null || reader == null)
-        {
-            throw new RuntimeException("Not connected to MCP server: " + config.getServerId());
-        }
-        
+        String endpoint = config.getEndpoint().replaceAll("/$", "");
+        String messageEndpoint = endpoint + "/message";
+
         String body = objectMapper.writeValueAsString(request);
-        System.out.println("[MCP] Sending: " + body);
-        
-        writer.write(body);
-        writer.newLine();
-        writer.flush();
-        
-        Future<String> future = executor.submit(() -> reader.readLine());
-        
-        try
+        System.out.println("[MCP-HTTP] Sending: " + body);
+
+        URL url = new URL(messageEndpoint);
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setRequestMethod("POST");
+        connection.setRequestProperty("Content-Type", "application/json");
+        connection.setRequestProperty("Accept", "application/json");
+        connection.setDoOutput(true);
+        connection.setConnectTimeout(connectTimeout);
+        connection.setReadTimeout(readTimeout);
+
+        try (OutputStream os = connection.getOutputStream())
         {
-            String responseLine = future.get(timeoutSeconds, TimeUnit.SECONDS);
-            if (responseLine == null)
+            byte[] input = body.getBytes(StandardCharsets.UTF_8);
+            os.write(input, 0, input.length);
+        }
+
+        int responseCode = connection.getResponseCode();
+        if (responseCode != HttpURLConnection.HTTP_OK && responseCode != HttpURLConnection.HTTP_ACCEPTED)
+        {
+            try (BufferedReader br = new BufferedReader(
+                new InputStreamReader(connection.getErrorStream(), StandardCharsets.UTF_8)))
             {
-                throw new RuntimeException("No response from MCP server: " + config.getServerId());
+                StringBuilder errorResponse = new StringBuilder();
+                String line;
+                while ((line = br.readLine()) != null)
+                {
+                    errorResponse.append(line);
+                }
+                throw new RuntimeException("HTTP request failed with code: " + responseCode + ", error: " + errorResponse);
             }
-            System.out.println("[MCP] Received: " + responseLine);
-            return objectMapper.readTree(responseLine);
         }
-        catch (TimeoutException e)
+
+        StringBuilder response = new StringBuilder();
+        try (BufferedReader br = new BufferedReader(
+            new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8)))
         {
-            future.cancel(true);
-            throw new RuntimeException("Timeout waiting for response from MCP server: " + config.getServerId());
+            String responseLine;
+            while ((responseLine = br.readLine()) != null)
+            {
+                // Handle SSE format
+                if (responseLine.startsWith("data:"))
+                {
+                    response.append(responseLine.substring(5).trim());
+                }
+                else if (!responseLine.isEmpty() && !responseLine.startsWith(":"))
+                {
+                    response.append(responseLine.trim());
+                }
+            }
         }
+
+        String responseBody = response.toString();
+        System.out.println("[MCP-HTTP] Received: " + responseBody);
+        return objectMapper.readTree(responseBody);
     }
 
     private void sendNotification(McpServerConfiguration config, ObjectNode notification) throws Exception
     {
-        BufferedWriter writer = writers.get(config.getServerId());
-        
-        if (writer == null)
-        {
-            throw new RuntimeException("Not connected to MCP server: " + config.getServerId());
-        }
-        
-        String body = objectMapper.writeValueAsString(notification);
-        System.out.println("[MCP] Sending notification: " + body);
-        
-        writer.write(body);
-        writer.newLine();
-        writer.flush();
-    }
+        String endpoint = config.getEndpoint().replaceAll("/$", "");
+        String messageEndpoint = endpoint + "/message";
 
-    private void cleanup(McpServerConfiguration config)
-    {
-        String serverId = config.getServerId();
-        Process process = processes.remove(serverId);
-        BufferedWriter writer = writers.remove(serverId);
-        BufferedReader reader = readers.remove(serverId);
-        
-        // Close streams first to unblock any pending reads
-        try
+        String body = objectMapper.writeValueAsString(notification);
+        System.out.println("[MCP-HTTP] Sending notification: " + body);
+
+        URL url = new URL(messageEndpoint);
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setRequestMethod("POST");
+        connection.setRequestProperty("Content-Type", "application/json");
+        connection.setDoOutput(true);
+        connection.setConnectTimeout(connectTimeout);
+        connection.setReadTimeout(readTimeout);
+
+        try (OutputStream os = connection.getOutputStream())
         {
-            if (writer != null)
-            {
-                writer.close();
-            }
+            byte[] input = body.getBytes(StandardCharsets.UTF_8);
+            os.write(input, 0, input.length);
         }
-        catch (Exception ignored)
-        {
-        }
-        
-        try
-        {
-            if (reader != null)
-            {
-                reader.close();
-            }
-        }
-        catch (Exception ignored)
-        {
-        }
-        
-        if (process != null)
-        {
-            process.destroyForcibly();
-            try
-            {
-                // Wait briefly for process to terminate
-                process.waitFor(2, TimeUnit.SECONDS);
-            }
-            catch (Exception ignored)
-            {
-            }
-        }
+
+        connection.getResponseCode();
     }
 
     public void disconnect(McpServerConfiguration config)
     {
-        cleanup(config);
+        connectedServers.remove(config.getServerId());
+        sessionIds.remove(config.getServerId());
+        System.out.println("[MCP-HTTP] Disconnected from: " + config.getServerId());
     }
 }
