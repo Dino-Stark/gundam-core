@@ -1,6 +1,7 @@
 package stark.dataworks.coderaider.gundam.core.examples;
 
 import stark.dataworks.coderaider.gundam.core.agent.IAgentRegistry;
+import stark.dataworks.coderaider.gundam.core.client.AgentChatClient;
 import stark.dataworks.coderaider.gundam.core.llmspi.ILlmClient;
 import stark.dataworks.coderaider.gundam.core.runner.AgentRunner;
 import stark.dataworks.coderaider.gundam.core.runner.IRunHooks;
@@ -34,6 +35,12 @@ final class ExampleSupport
             .sessionStore(sessionStore == null ? new InMemorySessionStore() : sessionStore)
             .eventPublisher(publisher)
             .build();
+    }
+
+
+    static AgentChatClient chatClient(AgentRunner runner, IAgentRegistry agentRegistry, String defaultAgentId)
+    {
+        return AgentChatClient.create(runner, agentRegistry, defaultAgentId);
     }
 
     static IRunHooks noopHooks()

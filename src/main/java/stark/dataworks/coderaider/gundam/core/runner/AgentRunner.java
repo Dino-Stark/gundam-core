@@ -39,7 +39,7 @@ import stark.dataworks.coderaider.gundam.core.llmspi.LlmResponse;
 import stark.dataworks.coderaider.gundam.core.llmspi.ILlmStreamListener;
 import stark.dataworks.coderaider.gundam.core.memory.IAgentMemory;
 import stark.dataworks.coderaider.gundam.core.metrics.TokenUsage;
-import stark.dataworks.coderaider.gundam.core.memory.InMemoryAgentMemory;
+import stark.dataworks.coderaider.gundam.core.memory.OpenAiLikeAgentMemory;
 import stark.dataworks.coderaider.gundam.core.model.Message;
 import stark.dataworks.coderaider.gundam.core.model.Role;
 import stark.dataworks.coderaider.gundam.core.model.ToolCall;
@@ -265,10 +265,20 @@ public class AgentRunner
     {
         // TODO: Make this memory configurable.
         // Options: in-memory, redis, mysql, context-service (will be implemented somewhere else I suppose).
-        IAgentMemory memory = new InMemoryAgentMemory();
+        IAgentMemory memory = new OpenAiLikeAgentMemory();
         if (runConfiguration.getSessionId() != null)
         {
-            sessionStore.load(runConfiguration.getSessionId()).ifPresent(s -> s.getMessages().forEach(memory::append));
+            sessionStore.load(runConfiguration.getSessionId()).ifPresent(s ->
+            {
+                if (memory instanceof OpenAiLikeAgentMemory openAiLikeMemory && !s.getItems().isEmpty())
+                {
+                    s.getItems().forEach(openAiLikeMemory::appendItem);
+                }
+                else
+                {
+                    s.getMessages().forEach(memory::append);
+                }
+            });
         }
 
         RunnerContext context = new RunnerContext(startingAgent, memory);
@@ -823,7 +833,14 @@ public class AgentRunner
         hookManager.afterRun(legacyContext);
         if (config.getSessionId() != null)
         {
-            sessionStore.save(new Session(config.getSessionId(), context.getMemory().messages()));
+            if (context.getMemory() instanceof OpenAiLikeAgentMemory openAiLikeMemory)
+            {
+                sessionStore.save(new Session(config.getSessionId(), context.getMemory().messages(), openAiLikeMemory.items(), null));
+            }
+            else
+            {
+                sessionStore.save(new Session(config.getSessionId(), context.getMemory().messages()));
+            }
         }
         Map<String, Object> attrs = new HashMap<>();
         attrs.put("finalAgent", context.getCurrentAgent().definition().getId());
