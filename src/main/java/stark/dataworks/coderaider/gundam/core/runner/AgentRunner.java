@@ -40,7 +40,7 @@ import stark.dataworks.coderaider.gundam.core.llmspi.LlmResponse;
 import stark.dataworks.coderaider.gundam.core.llmspi.ILlmStreamListener;
 import stark.dataworks.coderaider.gundam.core.memory.IAgentMemory;
 import stark.dataworks.coderaider.gundam.core.metrics.TokenUsage;
-import stark.dataworks.coderaider.gundam.core.memory.OpenAiLikeAgentMemory;
+import stark.dataworks.coderaider.gundam.core.memory.InMemoryAgentMemory;
 import stark.dataworks.coderaider.gundam.core.model.Message;
 import stark.dataworks.coderaider.gundam.core.model.Role;
 import stark.dataworks.coderaider.gundam.core.model.ToolCall;
@@ -279,12 +279,12 @@ public class AgentRunner
         runSpan.annotate("agent", startingAgent.definition().getId());
         // TODO: Make this memory configurable.
         // Options: in-memory, redis, mysql, context-service (will be implemented somewhere else I suppose).
-        IAgentMemory memory = new OpenAiLikeAgentMemory();
+        IAgentMemory memory = new InMemoryAgentMemory();
         if (runConfiguration.getSessionId() != null)
         {
             sessionStore.load(runConfiguration.getSessionId()).ifPresent(s ->
             {
-                if (memory instanceof OpenAiLikeAgentMemory openAiLikeMemory && !s.getItems().isEmpty())
+                if (memory instanceof InMemoryAgentMemory openAiLikeMemory && !s.getItems().isEmpty())
                 {
                     s.getItems().forEach(openAiLikeMemory::appendItem);
                 }
@@ -859,7 +859,7 @@ public class AgentRunner
         hookManager.afterRun(legacyContext);
         if (config.getSessionId() != null)
         {
-            if (context.getMemory() instanceof OpenAiLikeAgentMemory openAiLikeMemory)
+            if (context.getMemory() instanceof InMemoryAgentMemory openAiLikeMemory)
             {
                 sessionStore.save(new Session(config.getSessionId(), context.getMemory().messages(), openAiLikeMemory.items(), null));
             }
