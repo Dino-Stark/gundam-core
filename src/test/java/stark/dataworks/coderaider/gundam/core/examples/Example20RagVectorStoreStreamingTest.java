@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 import stark.dataworks.coderaider.gundam.core.agent.Agent;
@@ -74,7 +75,7 @@ public class Example20RagVectorStoreStreamingTest
         agentDef.setId("rag-streaming-agent");
         agentDef.setName("RAG Streaming Agent");
         agentDef.setModel(model);
-        agentDef.setSystemPrompt("You are a concise assistant. Use the provided context section to answer each question.");
+        agentDef.setSystemPrompt("You are a concise assistant. Read the retrieved context first and then answer strictly based on it.");
 
         AgentRegistry agentRegistry = new AgentRegistry();
         Agent agent = new Agent(agentDef);
@@ -96,24 +97,50 @@ public class Example20RagVectorStoreStreamingTest
 
         for (int i = 0; i < userTurns.size(); i++)
         {
+            int roundNumber = i + 1;
             String userInput = userTurns.get(i);
             List<String> roundTimeline = new ArrayList<>();
+
+            System.out.println("\\n========== ROUND " + roundNumber + " START ==========");
+            System.out.println("[round-" + roundNumber + "] user_input: " + userInput);
+
             roundTimeline.add("rag_retrieve_start");
             String retrievedContext = ragService.retrieveContext(userInput, 2);
             roundTimeline.add("rag_retrieve_end");
 
-            assertFalse(retrievedContext.isBlank(), "round " + (i + 1) + " should retrieve RAG context");
+            assertFalse(retrievedContext.isBlank(), "round " + roundNumber + " should retrieve RAG context");
 
-            String prompt = "User question: " + userInput + "\n"
-                + "Retrieved context (must read before answering):\n" + retrievedContext;
+            System.out.println("[round-" + roundNumber + "] retrieved_context_start");
+            for (String line : retrievedContext.split("\\n"))
+            {
+                System.out.println("[round-" + roundNumber + "] " + line);
+            }
+            System.out.println("[round-" + roundNumber + "] retrieved_context_end");
+
+            String prompt = "[ROUND-" + roundNumber + " INSTRUCTION]\\n"
+                + "You are now in round " + roundNumber + " of a 3-round RAG dialogue.\\n"
+                + "First, read the retrieved context section.\\n"
+                + "Then answer the user question in 2 concise bullet points.\\n"
+                + "--- USER QUESTION START ---\\n"
+                + userInput + "\\n"
+                + "--- USER QUESTION END ---\\n"
+                + "--- RETRIEVED CONTEXT START ---\\n"
+                + retrievedContext + "\\n"
+                + "--- RETRIEVED CONTEXT END ---\\n"
+                + "Include the prefix [Round " + roundNumber + " Answer] in your first line.";
 
             roundTimeline.add("llm_generate_start");
             ContextResult roundResult = runner.runStreamed(agent, prompt, cfg, ExampleSupport.noopHooks());
             roundTimeline.add("llm_generate_end");
 
+            System.out.println("\\n[round-" + roundNumber + "] final_output: " + roundResult.getFinalOutput());
+            System.out.println("========== ROUND " + roundNumber + " END ==========");
+
             assertFalse(roundResult.getFinalOutput().isBlank());
+            Assumptions.assumeFalse(roundResult.getFinalOutput().startsWith("Run failed:"),
+                "Skipping due to upstream provider/network failure: " + roundResult.getFinalOutput());
             assertTrue(roundTimeline.indexOf("rag_retrieve_end") < roundTimeline.indexOf("llm_generate_start"),
-                "round " + (i + 1) + " should complete retrieval before generation");
+                "round " + roundNumber + " should complete retrieval before generation");
         }
 
         assertEquals(3, userTurns.size());
