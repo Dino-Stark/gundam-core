@@ -62,6 +62,7 @@ Legend: ✅ implemented, 🟡 partial/in progress, ⚪ not implemented.
 16. **Existing strengths retained**: lifecycle hooks, retries, guardrails, tracing, handoffs, MCP, and structured output remain aligned with design goals.
 17. **ReAct debug-fix workflow hardened**: Example24 now stages verifier sources in workspace before agent execution, uses concise streaming output (tool lifecycle + final text) instead of verbose thought dumps, enforces tighter step/token limits, injects OS-specific verification commands into reviewer prompts, and includes a deterministic fallback patch so the scenario always completes with behavior validation and reviewer summary.
 18. **Complex ReAct debugging scenario added**: Example25 introduces a harder runtime-logic repair flow on `InvoiceSummaryEngine.java`, requiring coordinated source inspection, multi-defect patching, runtime behavior verification, explicit working-directory tool context, and stricter patch-call prompt constraints; both Example24/25 now load buggy sources and verifier sources from `src/test/resources/inputs` on each test run.
+19. **apply_patch argument compatibility improved**: `ApplyPatchTool` now robustly parses OpenAI-compatible `raw` tool payload variants (including nested/quoted JSON argument strings and substring extraction fallback), reducing repeated `Missing 'operation' parameter` failures in ReAct repair loops.
 
 ## New examples demonstrating capabilities
 
