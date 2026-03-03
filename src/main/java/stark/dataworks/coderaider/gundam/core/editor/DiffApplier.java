@@ -1,21 +1,20 @@
 package stark.dataworks.coderaider.gundam.core.editor;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import com.github.difflib.DiffUtils;
+import com.github.difflib.patch.Patch;
+import com.github.difflib.patch.PatchFailedException;
+import com.github.difflib.unifieddiff.UnifiedDiff;
+import com.github.difflib.unifieddiff.UnifiedDiffReader;
 
-/**
- * Utility for applying V4A diffs against text inputs.
- * This parser understands both the create-file syntax (only "+" prefixed lines)
- * and the default update syntax that includes context hunks.
- */
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 public final class DiffApplier
 {
-    private static final String END_PATCH = "*** End Patch";
-    private static final String END_FILE = "*** End of File";
-    private static final Pattern NEWLINE_PATTERN = Pattern.compile("\r?\n");
-
     private DiffApplier()
     {
     }
@@ -38,41 +37,264 @@ public final class DiffApplier
             return input;
         }
 
-        String newline = detectNewline(input, diff, mode);
-        List<String> diffLines = normalizeDiffLines(diff);
-
+        List<String> diffLines = splitLines(diff);
+        
         if (mode == ApplyDiffMode.CREATE)
         {
-            return parseCreateDiff(diffLines, newline);
+            return parseCreateDiff(diffLines);
         }
 
-        String normalizedInput = normalizeTextNewlines(input != null ? input : "");
-        ParsedUpdateDiff parsed = parseUpdateDiff(diffLines, normalizedInput);
-        return applyChunks(normalizedInput, parsed.getChunks(), newline);
-    }
-
-    private static String detectNewline(String input, String diff, ApplyDiffMode mode)
-    {
-        if (mode != ApplyDiffMode.CREATE && input != null && input.contains("\n"))
+        String normalizedInput = normalizeNewlines(input != null ? input : "");
+        String newline = detectNewline(input);
+        
+        if (isGitUnifiedDiff(diffLines))
         {
-            return input.contains("\r\n") ? "\r\n" : "\n";
+            try
+            {
+                Patch<String> patch = parseGitPatch(diffLines);
+                if (patch != null && !patch.getDeltas().isEmpty())
+                {
+                    List<String> originalLines = Arrays.asList(normalizedInput.split("\n", -1));
+                    List<String> result = DiffUtils.patch(originalLines, patch);
+                    return String.join(newline, result);
+                }
+            }
+            catch (PatchFailedException e)
+            {
+                return trySimplePatch(normalizedInput, diffLines, newline);
+            }
+            catch (Exception e)
+            {
+                return trySimplePatch(normalizedInput, diffLines, newline);
+            }
         }
-        return diff != null && diff.contains("\r\n") ? "\r\n" : "\n";
+        
+        if (isSimpleUnifiedDiff(diffLines))
+        {
+            try
+            {
+                Patch<String> patch = parseSimpleUnifiedPatch(diffLines);
+                if (patch != null && !patch.getDeltas().isEmpty())
+                {
+                    List<String> originalLines = Arrays.asList(normalizedInput.split("\n", -1));
+                    List<String> result = DiffUtils.patch(originalLines, patch);
+                    return String.join(newline, result);
+                }
+            }
+            catch (PatchFailedException e)
+            {
+                return applySimpleDiff(normalizedInput, diffLines, newline);
+            }
+            catch (Exception e)
+            {
+                return applySimpleDiff(normalizedInput, diffLines, newline);
+            }
+        }
+        
+        return applySimpleDiff(normalizedInput, diffLines, newline);
     }
 
-    private static List<String> normalizeDiffLines(String diff)
+    private static boolean isGitUnifiedDiff(List<String> lines)
+    {
+        for (String line : lines)
+        {
+            if (line.startsWith("diff --git"))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isSimpleUnifiedDiff(List<String> lines)
+    {
+        boolean hasMinus = false;
+        boolean hasPlus = false;
+        
+        for (String line : lines)
+        {
+            if (line.startsWith("--- "))
+            {
+                hasMinus = true;
+            }
+            if (line.startsWith("+++ "))
+            {
+                hasPlus = true;
+            }
+        }
+        
+        return hasMinus && hasPlus;
+    }
+
+    private static Patch<String> parseGitPatch(List<String> diffLines)
+    {
+        try
+        {
+            String diffText = String.join("\n", diffLines);
+            InputStream inputStream = new ByteArrayInputStream(diffText.getBytes(StandardCharsets.UTF_8));
+            UnifiedDiff unifiedDiff = UnifiedDiffReader.parseUnifiedDiff(inputStream);
+            
+            if (unifiedDiff == null || unifiedDiff.getFiles() == null || unifiedDiff.getFiles().isEmpty())
+            {
+                return null;
+            }
+            
+            return unifiedDiff.getFiles().get(0).getPatch();
+        }
+        catch (Exception e)
+        {
+            return null;
+        }
+    }
+
+    private static Patch<String> parseSimpleUnifiedPatch(List<String> diffLines)
+    {
+        try
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.append("diff --git a/file b/file\n");
+            for (String line : diffLines)
+            {
+                sb.append(line).append("\n");
+            }
+            
+            String diffText = sb.toString();
+            InputStream inputStream = new ByteArrayInputStream(diffText.getBytes(StandardCharsets.UTF_8));
+            UnifiedDiff unifiedDiff = UnifiedDiffReader.parseUnifiedDiff(inputStream);
+            
+            if (unifiedDiff == null || unifiedDiff.getFiles() == null || unifiedDiff.getFiles().isEmpty())
+            {
+                return null;
+            }
+            
+            return unifiedDiff.getFiles().get(0).getPatch();
+        }
+        catch (Exception e)
+        {
+            return null;
+        }
+    }
+
+    private static String applySimpleDiff(String input, List<String> diffLines, String newline)
+    {
+        String[] inputLines = input.split("\n", -1);
+        List<String> result = new ArrayList<>();
+        int inputIndex = 0;
+        
+        String anchor = extractAnchor(diffLines);
+        if (anchor != null && !anchor.isEmpty())
+        {
+            while (inputIndex < inputLines.length)
+            {
+                if (inputLines[inputIndex].equals(anchor))
+                {
+                    result.add(inputLines[inputIndex]);
+                    inputIndex++;
+                    break;
+                }
+                result.add(inputLines[inputIndex]);
+                inputIndex++;
+            }
+        }
+        
+        List<SimpleDiffLine> parsedDiff = parseSimpleDiff(diffLines);
+        
+        for (SimpleDiffLine diffLine : parsedDiff)
+        {
+            switch (diffLine.type)
+            {
+                case CONTEXT:
+                    while (inputIndex < inputLines.length && inputIndex < diffLine.sourceLine)
+                    {
+                        result.add(inputLines[inputIndex]);
+                        inputIndex++;
+                    }
+                    if (inputIndex < inputLines.length)
+                    {
+                        result.add(inputLines[inputIndex]);
+                        inputIndex++;
+                    }
+                    break;
+                case REMOVE:
+                    if (inputIndex < inputLines.length)
+                    {
+                        inputIndex++;
+                    }
+                    break;
+                case ADD:
+                    result.add(diffLine.content);
+                    break;
+            }
+        }
+        
+        while (inputIndex < inputLines.length)
+        {
+            result.add(inputLines[inputIndex]);
+            inputIndex++;
+        }
+        
+        return String.join(newline, result);
+    }
+
+    private static String extractAnchor(List<String> lines)
+    {
+        for (String line : lines)
+        {
+            if (line.startsWith("@@") && line.length() > 2)
+            {
+                String rest = line.substring(2).trim();
+                if (!rest.isEmpty())
+                {
+                    return rest;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static List<SimpleDiffLine> parseSimpleDiff(List<String> lines)
+    {
+        List<SimpleDiffLine> result = new ArrayList<>();
+        int sourceLine = 0;
+        
+        for (String line : lines)
+        {
+            if (line.startsWith("@@"))
+            {
+                continue;
+            }
+            
+            if (line.startsWith(" "))
+            {
+                result.add(new SimpleDiffLine(DiffType.CONTEXT, line.substring(1), sourceLine));
+                sourceLine++;
+            }
+            else if (line.startsWith("-"))
+            {
+                result.add(new SimpleDiffLine(DiffType.REMOVE, line.substring(1), sourceLine));
+                sourceLine++;
+            }
+            else if (line.startsWith("+"))
+            {
+                result.add(new SimpleDiffLine(DiffType.ADD, line.substring(1), -1));
+            }
+            else if (!line.trim().isEmpty())
+            {
+                result.add(new SimpleDiffLine(DiffType.CONTEXT, line, sourceLine));
+                sourceLine++;
+            }
+        }
+        
+        return result;
+    }
+
+    private static List<String> splitLines(String text)
     {
         List<String> lines = new ArrayList<>();
-        Matcher m = NEWLINE_PATTERN.matcher(diff);
-        int lastEnd = 0;
-        while (m.find())
+        String[] split = text.split("\r?\n", -1);
+        for (String line : split)
         {
-            lines.add(diff.substring(lastEnd, m.start()));
-            lastEnd = m.end();
-        }
-        if (lastEnd < diff.length())
-        {
-            lines.add(diff.substring(lastEnd));
+            lines.add(line);
         }
         if (!lines.isEmpty() && lines.get(lines.size() - 1).isEmpty())
         {
@@ -81,23 +303,31 @@ public final class DiffApplier
         return lines;
     }
 
-    private static String normalizeTextNewlines(String text)
+    private static String normalizeNewlines(String text)
     {
         return text.replace("\r\n", "\n");
     }
 
-    private static String parseCreateDiff(List<String> lines, String newline)
+    private static String detectNewline(String text)
     {
-        List<String> output = new ArrayList<>();
+        if (text != null && text.contains("\r\n"))
+        {
+            return "\r\n";
+        }
+        return "\n";
+    }
+
+    private static String parseCreateDiff(List<String> lines)
+    {
+        StringBuilder content = new StringBuilder();
         boolean inHunk = false;
-        boolean hasHeaders = false;
 
         for (String line : lines)
         {
-            if (line.startsWith("diff --git") || line.startsWith("new file mode") ||
-                line.startsWith("index ") || line.startsWith("--- ") || line.startsWith("+++ "))
+            if (line.startsWith("diff --git") || line.startsWith("index ") ||
+                line.startsWith("new file mode") || line.startsWith("--- ") ||
+                line.startsWith("+++ "))
             {
-                hasHeaders = true;
                 continue;
             }
 
@@ -107,396 +337,110 @@ public final class DiffApplier
                 continue;
             }
 
-            if (line.equals(END_PATCH) || line.startsWith("*** "))
+            if (inHunk && line.startsWith("+"))
             {
-                break;
+                content.append(line.substring(1)).append("\n");
             }
-
-            if (hasHeaders)
+            else if (!inHunk && line.startsWith("+"))
             {
-                if (inHunk && line.startsWith("+"))
-                {
-                    output.add(line.substring(1));
-                }
-            }
-            else
-            {
-                if (line.startsWith("+"))
-                {
-                    output.add(line.substring(1));
-                }
+                content.append(line.substring(1)).append("\n");
             }
         }
-        return String.join(newline, output);
+
+        if (content.length() > 0 && content.charAt(content.length() - 1) == '\n')
+        {
+            content.setLength(content.length() - 1);
+        }
+
+        return content.toString();
     }
 
-    private static ParsedUpdateDiff parseUpdateDiff(List<String> lines, String input)
+    private static String trySimplePatch(String input, List<String> diffLines, String newline)
     {
-        List<String> extendedLines = new ArrayList<>(lines);
-        extendedLines.add(END_PATCH);
-
-        String[] inputLines = input.split("\n", -1);
-        List<Chunk> chunks = new ArrayList<>();
-        int cursor = 0;
-        int index = 0;
-        int fuzz = 0;
-
-        while (index < extendedLines.size())
+        List<String> removed = new ArrayList<>();
+        List<String> added = new ArrayList<>();
+        
+        for (String line : diffLines)
         {
-            String line = extendedLines.get(index);
-
-            if (line.equals(END_PATCH) || line.equals(END_FILE) ||
-                line.startsWith("*** Update File:") || line.startsWith("*** Delete File:") ||
-                line.startsWith("*** Add File:"))
+            if (line.startsWith("diff --git") || line.startsWith("index ") ||
+                line.startsWith("new file mode") || line.startsWith("--- ") ||
+                line.startsWith("+++ ") || line.startsWith("@@"))
             {
-                break;
-            }
-
-            if (line.startsWith("@@"))
-            {
-                index++;
                 continue;
             }
-
-            ReadSectionResult section = readSection(extendedLines, index);
-            if (section.getContext().isEmpty() && section.getChunks().isEmpty())
+            
+            if (line.startsWith("-") && !line.startsWith("---"))
             {
-                break;
+                removed.add(line.substring(1));
             }
-
-            ContextMatch findResult = findContext(inputLines, section.getContext().toArray(new String[0]), cursor, section.isEof());
-            if (findResult.getNewIndex() == -1)
+            else if (line.startsWith("+") && !line.startsWith("+++"))
             {
-                throw new IllegalArgumentException("Invalid Context at position " + cursor);
-            }
-
-            cursor = findResult.getNewIndex() + section.getContext().size();
-            fuzz += findResult.getFuzz();
-            index = section.getEndIndex();
-
-            for (Chunk ch : section.getChunks())
-            {
-                chunks.add(new Chunk(
-                    ch.getOrigIndex() + findResult.getNewIndex(),
-                    ch.getDelLines(),
-                    ch.getInsLines()
-                ));
+                added.add(line.substring(1));
             }
         }
-
-        return new ParsedUpdateDiff(chunks, fuzz);
+        
+        if (removed.isEmpty() && added.isEmpty())
+        {
+            return input;
+        }
+        
+        String[] inputLines = input.split("\n", -1);
+        List<String> result = new ArrayList<>();
+        
+        for (int i = 0; i < inputLines.length; i++)
+        {
+            String inputLine = inputLines[i];
+            boolean matched = false;
+            
+            for (int j = 0; j < removed.size() && j < added.size(); j++)
+            {
+                String oldLine = removed.get(j);
+                if (inputLine.trim().equals(oldLine.trim()))
+                {
+                    String indent = getIndent(inputLine);
+                    result.add(indent + added.get(j).trim());
+                    matched = true;
+                    break;
+                }
+            }
+            
+            if (!matched)
+            {
+                result.add(inputLine);
+            }
+        }
+        
+        return String.join(newline, result);
     }
 
-    private static ReadSectionResult readSection(List<String> lines, int startIndex)
+    private static String getIndent(String line)
     {
-        List<String> context = new ArrayList<>();
-        List<String> delLines = new ArrayList<>();
-        List<String> insLines = new ArrayList<>();
-        List<Chunk> sectionChunks = new ArrayList<>();
-        int index = startIndex;
-        String lastMode = "keep";
-
-        while (index < lines.size())
+        int i = 0;
+        while (i < line.length() && (line.charAt(i) == ' ' || line.charAt(i) == '\t'))
         {
-            String raw = lines.get(index);
-
-            if (raw.startsWith("@@") || raw.startsWith(END_PATCH) ||
-                raw.startsWith("*** Update File:") || raw.startsWith("*** Delete File:") ||
-                raw.startsWith("*** Add File:") || raw.equals(END_FILE) || raw.equals("***"))
-            {
-                break;
-            }
-
-            index++;
-
-            if (raw.isEmpty())
-            {
-                raw = " ";
-            }
-
-            char prefix = raw.charAt(0);
-            String mode;
-            String lineContent = raw.length() > 1 ? raw.substring(1) : "";
-
-            if (prefix == '+')
-            {
-                mode = "add";
-            }
-            else if (prefix == '-')
-            {
-                mode = "delete";
-            }
-            else if (prefix == ' ')
-            {
-                mode = "keep";
-            }
-            else
-            {
-                throw new IllegalArgumentException("Invalid Line: " + raw);
-            }
-
-            boolean switchingToContext = "keep".equals(mode) && !"keep".equals(lastMode);
-            if (switchingToContext && (!delLines.isEmpty() || !insLines.isEmpty()))
-            {
-                sectionChunks.add(new Chunk(context.size() - delLines.size(), new ArrayList<>(delLines), new ArrayList<>(insLines)));
-                delLines.clear();
-                insLines.clear();
-            }
-
-            if ("delete".equals(mode))
-            {
-                delLines.add(lineContent);
-                context.add(lineContent);
-            }
-            else if ("add".equals(mode))
-            {
-                insLines.add(lineContent);
-            }
-            else
-            {
-                context.add(lineContent);
-            }
-
-            lastMode = mode;
+            i++;
         }
-
-        if (!delLines.isEmpty() || !insLines.isEmpty())
-        {
-            sectionChunks.add(new Chunk(context.size() - delLines.size(), new ArrayList<>(delLines), new ArrayList<>(insLines)));
-        }
-
-        boolean eof = index < lines.size() && lines.get(index).equals(END_FILE);
-        if (eof)
-        {
-            index++;
-        }
-
-        return new ReadSectionResult(context, sectionChunks, index, eof);
+        return line.substring(0, i);
     }
 
-    private static ContextMatch findContext(String[] lines, String[] context, int start, boolean eof)
+    private enum DiffType
     {
-        if (context.length == 0)
-        {
-            return new ContextMatch(start, 0);
-        }
-
-        if (eof)
-        {
-            int endStart = Math.max(0, lines.length - context.length);
-            ContextMatch endMatch = findContextCore(lines, context, endStart);
-            if (endMatch.getNewIndex() != -1)
-            {
-                return endMatch;
-            }
-            ContextMatch fallback = findContextCore(lines, context, start);
-            return new ContextMatch(fallback.getNewIndex(), fallback.getFuzz() + 10000);
-        }
-
-        return findContextCore(lines, context, start);
+        CONTEXT,
+        REMOVE,
+        ADD
     }
 
-    private static ContextMatch findContextCore(String[] lines, String[] context, int start)
+    private static class SimpleDiffLine
     {
-        for (int i = start; i <= lines.length - context.length; i++)
+        final DiffType type;
+        final String content;
+        final int sourceLine;
+
+        SimpleDiffLine(DiffType type, String content, int sourceLine)
         {
-            if (equalsSlice(lines, context, i, false, false))
-            {
-                return new ContextMatch(i, 0);
-            }
-        }
-
-        for (int i = start; i <= lines.length - context.length; i++)
-        {
-            if (equalsSlice(lines, context, i, true, false))
-            {
-                return new ContextMatch(i, 1);
-            }
-        }
-
-        for (int i = start; i <= lines.length - context.length; i++)
-        {
-            if (equalsSlice(lines, context, i, false, true))
-            {
-                return new ContextMatch(i, 100);
-            }
-        }
-
-        return new ContextMatch(-1, 0);
-    }
-
-    private static boolean equalsSlice(String[] source, String[] target, int start, boolean stripTrailing, boolean stripAll)
-    {
-        if (start + target.length > source.length)
-        {
-            return false;
-        }
-
-        for (int offset = 0; offset < target.length; offset++)
-        {
-            String sourceValue = source[start + offset];
-            String targetValue = target[offset];
-
-            if (stripAll)
-            {
-                sourceValue = sourceValue.strip();
-                targetValue = targetValue.strip();
-            }
-            else if (stripTrailing)
-            {
-                sourceValue = sourceValue.stripTrailing();
-                targetValue = targetValue.stripTrailing();
-            }
-
-            if (!sourceValue.equals(targetValue))
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private static String applyChunks(String input, List<Chunk> chunks, String newline)
-    {
-        String[] origLines = input.split("\n", -1);
-        List<String> destLines = new ArrayList<>();
-        int cursor = 0;
-
-        for (Chunk chunk : chunks)
-        {
-            if (chunk.getOrigIndex() > origLines.length)
-            {
-                throw new IllegalArgumentException("applyDiff: chunk.origIndex " + chunk.getOrigIndex() + " > input length " + origLines.length);
-            }
-            if (cursor > chunk.getOrigIndex())
-            {
-                throw new IllegalArgumentException("applyDiff: overlapping chunk at " + chunk.getOrigIndex() + " (cursor " + cursor + ")");
-            }
-
-            for (int i = cursor; i < chunk.getOrigIndex(); i++)
-            {
-                destLines.add(origLines[i]);
-            }
-            cursor = chunk.getOrigIndex();
-
-            destLines.addAll(chunk.getInsLines());
-            cursor += chunk.getDelLines().size();
-        }
-
-        for (int i = cursor; i < origLines.length; i++)
-        {
-            destLines.add(origLines[i]);
-        }
-
-        return String.join(newline, destLines);
-    }
-
-    private static class Chunk
-    {
-        private final int origIndex;
-        private final List<String> delLines;
-        private final List<String> insLines;
-
-        public Chunk(int origIndex, List<String> delLines, List<String> insLines)
-        {
-            this.origIndex = origIndex;
-            this.delLines = delLines;
-            this.insLines = insLines;
-        }
-
-        public int getOrigIndex()
-        {
-            return origIndex;
-        }
-
-        public List<String> getDelLines()
-        {
-            return delLines;
-        }
-
-        public List<String> getInsLines()
-        {
-            return insLines;
-        }
-    }
-
-    private static class ParsedUpdateDiff
-    {
-        private final List<Chunk> chunks;
-        private final int fuzz;
-
-        public ParsedUpdateDiff(List<Chunk> chunks, int fuzz)
-        {
-            this.chunks = chunks;
-            this.fuzz = fuzz;
-        }
-
-        public List<Chunk> getChunks()
-        {
-            return chunks;
-        }
-
-        public int getFuzz()
-        {
-            return fuzz;
-        }
-    }
-
-    private static class ReadSectionResult
-    {
-        private final List<String> context;
-        private final List<Chunk> chunks;
-        private final int endIndex;
-        private final boolean eof;
-
-        public ReadSectionResult(List<String> context, List<Chunk> chunks, int endIndex, boolean eof)
-        {
-            this.context = context;
-            this.chunks = chunks;
-            this.endIndex = endIndex;
-            this.eof = eof;
-        }
-
-        public List<String> getContext()
-        {
-            return context;
-        }
-
-        public List<Chunk> getChunks()
-        {
-            return chunks;
-        }
-
-        public int getEndIndex()
-        {
-            return endIndex;
-        }
-
-        public boolean isEof()
-        {
-            return eof;
-        }
-    }
-
-    private static class ContextMatch
-    {
-        private final int newIndex;
-        private final int fuzz;
-
-        public ContextMatch(int newIndex, int fuzz)
-        {
-            this.newIndex = newIndex;
-            this.fuzz = fuzz;
-        }
-
-        public int getNewIndex()
-        {
-            return newIndex;
-        }
-
-        public int getFuzz()
-        {
-            return fuzz;
+            this.type = type;
+            this.content = content;
+            this.sourceLine = sourceLine;
         }
     }
 }

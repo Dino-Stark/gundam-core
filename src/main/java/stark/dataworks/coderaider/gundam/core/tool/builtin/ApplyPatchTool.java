@@ -63,7 +63,12 @@ public class ApplyPatchTool implements ITool
         Object operationObj = input.get("operation");
         if (operationObj == null)
         {
-            return errorResult("Missing 'operation' parameter");
+            operationObj = tryExtractOperation(input);
+        }
+        
+        if (operationObj == null)
+        {
+            return errorResult("Missing 'operation' parameter. Provide: {\"operation\": {\"type\": \"update_file\", \"path\": \"...\", \"diff\": \"...\"}}");
         }
 
         if (!(operationObj instanceof Map))
@@ -212,6 +217,96 @@ public class ApplyPatchTool implements ITool
             return null;
         }
         return String.valueOf(value);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> tryExtractOperation(Map<String, Object> input)
+    {
+        if (input.containsKey("type") && input.containsKey("path"))
+        {
+            return input;
+        }
+        
+        Object rawObj = input.get("raw");
+        if (rawObj != null)
+        {
+            Map<String, Object> op = tryParseRawAsOperation(rawObj.toString());
+            if (op != null)
+            {
+                return op;
+            }
+        }
+        
+        for (Object value : input.values())
+        {
+            if (value instanceof Map)
+            {
+                Map<String, Object> mapValue = (Map<String, Object>) value;
+                if (mapValue.containsKey("type") && mapValue.containsKey("path"))
+                {
+                    return mapValue;
+                }
+            }
+        }
+        
+        for (Object value : input.values())
+        {
+            if (value instanceof String)
+            {
+                Map<String, Object> op = tryParseRawAsOperation(value.toString());
+                if (op != null)
+                {
+                    return op;
+                }
+            }
+        }
+        
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> tryParseRawAsOperation(String raw)
+    {
+        if (raw == null || raw.isBlank())
+        {
+            return null;
+        }
+        
+        try
+        {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            
+            String jsonToParse = raw;
+            if (raw.contains("\n") || raw.contains("\r"))
+            {
+                jsonToParse = raw
+                    .replace("\r\n", "\\r\\n")
+                    .replace("\n", "\\n")
+                    .replace("\r", "\\r");
+            }
+            
+            com.fasterxml.jackson.databind.JsonNode node = mapper.readTree(jsonToParse);
+            
+            if (node.has("operation"))
+            {
+                com.fasterxml.jackson.databind.JsonNode opNode = node.get("operation");
+                if (opNode.has("type") && opNode.has("path"))
+                {
+                    return mapper.convertValue(opNode, Map.class);
+                }
+            }
+            
+            if (node.has("type") && node.has("path"))
+            {
+                return mapper.convertValue(node, Map.class);
+            }
+            
+            return null;
+        }
+        catch (Exception e)
+        {
+            return null;
+        }
     }
 
     private String successResult(String message)

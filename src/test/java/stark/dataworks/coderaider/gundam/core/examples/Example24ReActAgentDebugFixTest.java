@@ -16,8 +16,8 @@ import stark.dataworks.coderaider.gundam.core.runner.RunConfiguration;
 import stark.dataworks.coderaider.gundam.core.tool.ToolDefinition;
 import stark.dataworks.coderaider.gundam.core.tool.ToolParameterSchema;
 import stark.dataworks.coderaider.gundam.core.tool.ToolRegistry;
-import stark.dataworks.coderaider.gundam.core.tool.builtin.ApplyPatchTool;
 import stark.dataworks.coderaider.gundam.core.tool.builtin.LocalShellTool;
+import stark.dataworks.coderaider.gundam.core.tool.builtin.ApplyPatchTool;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -42,7 +42,7 @@ public class Example24ReActAgentDebugFixTest
     private static final Path INPUT_BUG_FILE = Path.of("src", "test", "resources", "inputs", "BuggyCalculator.java");
     private static final Path INPUT_VERIFIER_FILE = Path.of("src", "test", "resources", "inputs", "BuggyCalculatorVerifier.java");
     private static final RunConfiguration EXAMPLE_RUN_CONFIGURATION =
-        new RunConfiguration(1, null, 0.1, 512, "auto", "text", Map.of());
+        new RunConfiguration(10, null, 0.1, 2048, "auto", "text", Map.of());
 
     @Test
     public void run() throws IOException
@@ -128,12 +128,6 @@ public class Example24ReActAgentDebugFixTest
         Assertions.assertTrue(Files.exists(targetBugFile), "Expected buggy source in workspace");
 
         String behaviorOutput = runBehaviorVerification(workspace);
-        if (!behaviorOutput.contains("BEHAVIOR_OK"))
-        {
-            applyDeterministicFallbackFix(targetBugFile);
-            behaviorOutput = runBehaviorVerification(workspace);
-        }
-
         Assertions.assertTrue(behaviorOutput.contains("BEHAVIOR_OK"), "Expected add behavior verification to pass: " + behaviorOutput);
     }
 
@@ -155,18 +149,12 @@ public class Example24ReActAgentDebugFixTest
         def.setModel(MODEL);
         def.setReactEnabled(true);
         def.setSystemPrompt("""
-            You are the lead debugging coordinator.
-            Produce only a short delegation plan for a multi-agent ReAct workflow:
-            1) investigator inspects source and collects observations,
-            2) fixer patches + compiles iteratively,
-            3) reviewer verifies runtime behavior tests pass.
-            Known bug: method add(a, b) currently behaves like subtraction and must return arithmetic sum.
-            This coordinator run must not invoke tools or handoffs.
-            Runtime OS: %s.
-            Workspace: %s
+            You are the debugging coordinator. Output a 3-step plan only.
+            Bug: add(a, b) subtracts instead of adds.
+            OS: %s. Workspace: %s
             """.formatted(runtimeOs.displayName, workspace));
-        def.setReactInstructions("Keep thoughts concise and end after providing the numbered plan.");
-        def.setModelReasoning(Map.of("effort", "medium"));
+        def.setReactInstructions("Output plan in numbered list. No tool calls.");
+        def.setModelReasoning(Map.of("effort", "low"));
         return new Agent(def);
     }
 
@@ -178,16 +166,14 @@ public class Example24ReActAgentDebugFixTest
         def.setModel(MODEL);
         def.setReactEnabled(true);
         def.setSystemPrompt("""
-            You are the investigator. Use shell commands to inspect BuggyCalculator.java and identify the root cause.
-            Provide factual observations for the fixer. Do not patch files.
-            Expected correct behavior examples: add(7, 5)=12 and add(3, -2)=1.
-            Runtime OS: %s.
-            Workspace: %s
+            Investigate BuggyCalculator.java bug.
+            Expected: add(7,5)=12, add(3,-2)=1.
+            OS: %s. Workspace: %s
             """.formatted(runtimeOs.displayName, workspace));
-        def.setReactInstructions("Loop in ReAct style: thought -> action -> observation. Keep each thought short.");
+        def.setReactInstructions("1) Read file 2) Compile 3) Report root cause. Keep thoughts brief.");
         def.setToolNames(List.of("local_shell"));
         def.setModelProviderOptions(Map.of("working_directory", workspace.toString()));
-        def.setModelReasoning(Map.of("effort", "medium"));
+        def.setModelReasoning(Map.of("effort", "low"));
         return new Agent(def);
     }
 
@@ -199,17 +185,25 @@ public class Example24ReActAgentDebugFixTest
         def.setModel(MODEL);
         def.setReactEnabled(true);
         def.setSystemPrompt("""
-            You are the fixer.
-            Use apply_patch to modify BuggyCalculator.java and local_shell to compile/run behavior checks.
-            Known bug: add(a, b) currently subtracts b.
-            Success criteria: behavior tests return add(7,5)=12 and add(3,-2)=1.
-            Runtime OS: %s.
-            Workspace: %s
+            Fix BuggyCalculator.java. Bug: add(a,b) subtracts instead of adds.
+            Target: add(7,5)=12, add(3,-2)=1.
+            OS: %s. Workspace: %s
+            
+            Use apply_patch with simple diff format:
+            {"operation":{"type":"update_file","path":"BuggyCalculator.java","diff":"..."}}
+            
+            Simple diff format (space for context, - for remove, + for add):
+             public class BuggyCalculator {
+                 public static int add(int a, int b) {
+            -        return a - b;
+            +        return a + b;
+                 }
+             }
             """.formatted(runtimeOs.displayName, workspace));
-        def.setReactInstructions("At most one apply_patch call and one local_shell call; then finalize. For apply_patch, send arguments as {\"operation\":{\"type\":\"update_file\",\"path\":\"BuggyCalculator.java\",\"diff\":\"...\"}} with no raw wrapper.");
+        def.setReactInstructions("Apply patch via apply_patch, compile to verify. End with summary.");
         def.setToolNames(List.of("apply_patch", "local_shell"));
         def.setModelProviderOptions(Map.of("working_directory", workspace.toString()));
-        def.setModelReasoning(Map.of("effort", "medium"));
+        def.setModelReasoning(Map.of("effort", "low"));
         return new Agent(def);
     }
 
@@ -221,36 +215,31 @@ public class Example24ReActAgentDebugFixTest
         def.setModel(MODEL);
         def.setReactEnabled(true);
         def.setSystemPrompt("""
-            You are the reviewer.
-            Verify runtime correctness by compiling and checking behavior examples.
-            Required behavior: add(7,5)=12 and add(3,-2)=1.
-            If not, explain what should be redone.
-            Runtime OS: %s.
-            Workspace: %s
+            Verify fix. Required: add(7,5)=12, add(3,-2)=1.
+            OS: %s. Workspace: %s
             """.formatted(runtimeOs.displayName, workspace));
-        def.setReactInstructions("Run one verification command, then finish with PASS/FAIL and evidence.");
+        def.setReactInstructions("Compile and run verifier. Output PASS or FAIL with evidence.");
         def.setToolNames(List.of("local_shell"));
         def.setModelProviderOptions(Map.of("working_directory", workspace.toString()));
-        def.setModelReasoning(Map.of("effort", "medium"));
+        def.setModelReasoning(Map.of("effort", "low"));
         return new Agent(def);
     }
 
     private static String buildCoordinatorUserPrompt(RuntimeOs runtimeOs, Path workspace)
     {
         return """
-            Run a full multi-agent ReAct bug-fix workflow for BuggyCalculator.java.
-
-            Requirements:
-            - The buggy source is already in: %s
-            - Use command style compatible with runtime OS: %s
-            - Known bug: add(a, b) is implemented as subtraction and gives wrong results.
-            - Investigator should inspect source and optionally compile first to confirm behavior.
-            - Fixer must restore correct addition behavior.
-            - Reviewer must verify runtime behavior checks pass.
-            - You are only producing a concise plan in this step, no tool calls.
-
-            Recommended compile command:
-            %s
+            Run a multi-agent ReAct bug-fix workflow for BuggyCalculator.java.
+            
+            The buggy source is in: %s
+            Runtime OS: %s
+            Known bug: add(a, b) is implemented as subtraction and gives wrong results.
+            
+            Produce a concise delegation plan for:
+            1) Investigator: inspect source and identify root cause
+            2) Fixer: patch the code and compile
+            3) Reviewer: verify runtime behavior tests pass
+            
+            Recommended compile command: %s
             """.formatted(workspace.resolve("BuggyCalculator.java"), runtimeOs.displayName, runtimeOs.compileCommand(workspace));
     }
 
@@ -259,61 +248,73 @@ public class Example24ReActAgentDebugFixTest
     {
         return """
             Investigate the bug in BuggyCalculator.java.
-            1) Print file content using an explicit workspace command (cd workspace first).
-            2) Compile the source and observe result.
-            3) Explain why add(7,5) and add(3,-2) are currently wrong.
-            4) Provide root cause summary for fixer.
-
+            
+            Steps:
+            1) Print file content to understand the code
+            2) Compile the source and observe any errors
+            3) Explain why add(7,5) and add(3,-2) are currently wrong
+            4) Provide root cause summary for the fixer
+            
             Runtime OS: %s
             Workspace: %s
-            File print command suggestion: %s
-            Compile command suggestion: %s
+            File print command: %s
+            Compile command: %s
             """.formatted(runtimeOs.displayName, workspace, runtimeOs.printFileCommand(workspace, "BuggyCalculator.java"), runtimeOs.compileCommand(workspace));
     }
 
     private static String buildFixerPrompt(RuntimeOs runtimeOs, Path workspace, String investigationOutput, String sourceSnapshot, int attempt)
     {
         return """
-            Fix BuggyCalculator.java using ReAct loop.
-            - Read investigator report.
-            - Apply minimal patch so add(7,5)=12 and add(3,-2)=1.
-            - Compile and verify behavior.
-            - Return final operations summary.
-            - If previous attempt failed, force a direct update on BuggyCalculator.java.
-            - Use at most one patch command and one compile command in this run.
-            - Stop once you have compile evidence.
-            - apply_patch payload must be strict JSON object with operation field (no raw string).
-
+            Fix BuggyCalculator.java based on the investigation results.
+            
             Attempt: %d
-            Investigator report:
+            Target behavior: add(7,5)=12, add(3,-2)=1
+            
+            Investigation report:
             %s
-
-            Current source snapshot:
+            
+            Current source code:
             %s
-
+            
             Runtime OS: %s
             Workspace: %s
-            File print command suggestion: %s
-            Compile command suggestion: %s
-            """.formatted(attempt, investigationOutput, sourceSnapshot, runtimeOs.displayName, workspace, runtimeOs.printFileCommand(workspace, "BuggyCalculator.java"), runtimeOs.compileCommand(workspace));
+            
+            Instructions:
+            1. Use apply_patch with a simple diff to fix the bug
+            2. Compile to verify the fix
+            3. Provide a summary of the fix
+            
+            apply_patch format:
+            {"operation":{"type":"update_file","path":"BuggyCalculator.java","diff":"..."}}
+            
+            Simple diff format (space for context, - for remove, + for add):
+             public class BuggyCalculator {
+                 public static int add(int a, int b) {
+            -        return a - b;
+            +        return a + b;
+                 }
+             }
+            """.formatted(attempt, investigationOutput, sourceSnapshot, runtimeOs.displayName, workspace);
     }
 
     private static String buildReviewerPrompt(RuntimeOs runtimeOs, Path workspace, String fixerOutput)
     {
         return """
-            Review the fixer result.
-            - Compile and run behavior checks for add(7,5)=12 and add(3,-2)=1 using:
-              cd workspace && javac BuggyCalculator.java BuggyCalculatorVerifier.java && java BuggyCalculatorVerifier
-            - Report PASS only if all checks succeed, otherwise FAIL.
-
+            Review the fixer's result and verify correctness.
+            
+            Required behavior: add(7,5)=12 and add(3,-2)=1
+            
             Fixer output:
             %s
-
+            
             Runtime OS: %s
             Workspace: %s
-            File print command suggestion: %s
-            Compile command suggestion: %s
-            """.formatted(fixerOutput, runtimeOs.displayName, workspace, runtimeOs.printFileCommand(workspace, "BuggyCalculator.java"), runtimeOs.compileCommand(workspace));
+            
+            Run verification command:
+            cd workspace && javac BuggyCalculator.java BuggyCalculatorVerifier.java && java BuggyCalculatorVerifier
+            
+            Report PASS only if output contains BEHAVIOR_OK, otherwise FAIL with details.
+            """.formatted(fixerOutput, runtimeOs.displayName, workspace);
     }
 
     private static LocalShellTool createShellTool()
@@ -323,13 +324,6 @@ public class Example24ReActAgentDebugFixTest
             "Execute a local shell command and return stdout/stderr.",
             List.of(new ToolParameterSchema("command", "string", true, "Shell command to execute")));
         return new LocalShellTool(definition);
-    }
-
-    private static void applyDeterministicFallbackFix(Path targetBugFile) throws IOException
-    {
-        String source = Files.readString(targetBugFile);
-        String patched = source.replace("return a - b;", "return a + b;");
-        Files.writeString(targetBugFile, patched);
     }
 
     private static RuntimeOs detectRuntimeOs()
@@ -447,13 +441,41 @@ public class Example24ReActAgentDebugFixTest
         @Override
         public ApplyPatchResult createFile(ApplyPatchOperation operation)
         {
-            return updateOrCreate(operation, true);
+            try
+            {
+                Path path = safeResolve(operation.getPath());
+                if (path.getParent() != null)
+                {
+                    Files.createDirectories(path.getParent());
+                }
+                Files.writeString(path, operation.getDiff());
+                return ApplyPatchResult.completed("Created " + operation.getPath());
+            }
+            catch (IOException ex)
+            {
+                return ApplyPatchResult.failed("Create failed: " + ex.getMessage());
+            }
         }
 
         @Override
         public ApplyPatchResult updateFile(ApplyPatchOperation operation)
         {
-            return updateOrCreate(operation, false);
+            try
+            {
+                Path path = safeResolve(operation.getPath());
+                if (!Files.exists(path))
+                {
+                    return ApplyPatchResult.failed("File not found: " + operation.getPath());
+                }
+                String original = Files.readString(path);
+                String updated = ApplyPatchTool.applyDiff(original, operation.getDiff());
+                Files.writeString(path, updated);
+                return ApplyPatchResult.completed("Updated " + operation.getPath());
+            }
+            catch (Exception ex)
+            {
+                return ApplyPatchResult.failed("Update failed: " + ex.getMessage());
+            }
         }
 
         @Override
@@ -468,26 +490,6 @@ public class Example24ReActAgentDebugFixTest
             catch (IOException ex)
             {
                 return ApplyPatchResult.failed("Delete failed: " + ex.getMessage());
-            }
-        }
-
-        private ApplyPatchResult updateOrCreate(ApplyPatchOperation operation, boolean create)
-        {
-            try
-            {
-                Path path = safeResolve(operation.getPath());
-                if (path.getParent() != null)
-                {
-                    Files.createDirectories(path.getParent());
-                }
-                String original = Files.exists(path) ? Files.readString(path) : "";
-                String updated = create ? ApplyPatchTool.applyCreateDiff(operation.getDiff()) : ApplyPatchTool.applyDiff(original, operation.getDiff());
-                Files.writeString(path, updated);
-                return ApplyPatchResult.completed((create ? "Created " : "Updated ") + operation.getPath());
-            }
-            catch (IOException ex)
-            {
-                return ApplyPatchResult.failed("Write failed: " + ex.getMessage());
             }
         }
 
