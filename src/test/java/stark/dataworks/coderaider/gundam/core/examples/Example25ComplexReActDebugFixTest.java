@@ -13,11 +13,8 @@ import stark.dataworks.coderaider.gundam.core.editor.IApplyPatchEditor;
 import stark.dataworks.coderaider.gundam.core.llmspi.adapter.ModelScopeLlmClient;
 import stark.dataworks.coderaider.gundam.core.runner.AgentRunner;
 import stark.dataworks.coderaider.gundam.core.runner.RunConfiguration;
-import stark.dataworks.coderaider.gundam.core.tool.ToolDefinition;
-import stark.dataworks.coderaider.gundam.core.tool.ToolParameterSchema;
 import stark.dataworks.coderaider.gundam.core.tool.ToolRegistry;
 import stark.dataworks.coderaider.gundam.core.tool.builtin.ApplyPatchTool;
-import stark.dataworks.coderaider.gundam.core.tool.builtin.LocalShellTool;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -30,10 +27,9 @@ import java.util.Map;
 /**
  * 25) Harder ReAct debug/fix workflow: logical bug fixing with runtime verification.
  * <p>
- * Fast-path strategy:
- * - Single fixer agent with explicit known defects.
- * - Minimal reasoning/token budget.
- * - At most two short fixer attempts, then deterministic fallback.
+ * Pattern:
+ * - Single debugger agent: inspect, patch, verify by tool calls.
+ * - Outer retry loop: rerun agent if verifier still fails.
  */
 public class Example25ComplexReActDebugFixTest
 {
@@ -41,7 +37,7 @@ public class Example25ComplexReActDebugFixTest
     private static final Path INPUT_FILE = Path.of("src", "test", "resources", "inputs", "InvoiceSummaryEngine.java");
     private static final Path INPUT_VERIFIER_FILE = Path.of("src", "test", "resources", "inputs", "InvoiceSummaryEngineVerifier.java");
     private static final RunConfiguration EXAMPLE_RUN_CONFIGURATION =
-        new RunConfiguration(4, null, 0.0, 512, "auto", "text", Map.of());
+        new RunConfiguration(2, null, 0.0, 256, "auto", "text", Map.of());
 
     @Test
     public void run() throws IOException
@@ -62,11 +58,10 @@ public class Example25ComplexReActDebugFixTest
         stageVerifierSource(workspace.resolve("InvoiceSummaryEngineVerifier.java"));
 
         ToolRegistry toolRegistry = new ToolRegistry();
-        toolRegistry.register(createShellTool());
         toolRegistry.register(new ApplyPatchTool(new FileSystemEditor(workspace), false));
 
         AgentRegistry agentRegistry = new AgentRegistry();
-        agentRegistry.register(createFixerAgent(runtimeOs, workspace));
+        agentRegistry.register(createDebuggerAgent(runtimeOs, workspace));
 
         AgentRunner runner = AgentRunner.builder()
             .llmClient(new ModelScopeLlmClient(apiKey, MODEL))
@@ -75,95 +70,106 @@ public class Example25ComplexReActDebugFixTest
             .eventPublisher(ExampleStreamingPublishers.textWithToolLifecycle("ReAct "))
             .build();
 
-        ContextResult fixerResult = null;
-        String behaviorOutput = "BEHAVIOR_FAIL not verified yet";
-        for (int attempt = 1; attempt <= 2; attempt++)
+        String behaviorOutput = runBehaviorVerification(runtimeOs, workspace);
+        System.out.println("INITIAL_VERIFICATION: " + behaviorOutput.trim());
+
+        ContextResult debuggerResult = null;
+        for (int attempt = 1; attempt <= 3; attempt++)
         {
-            fixerResult = runner.chatClient("react25-fixer")
+            String sourceSnapshot = Files.readString(targetFile);
+            debuggerResult = runner.chatClient("react25-debugger")
                 .prompt()
                 .stream(true)
-                .user(buildFixerPrompt(runtimeOs, workspace, targetFile, attempt, behaviorOutput))
+                .user(buildDebuggerPrompt(runtimeOs, workspace, attempt, behaviorOutput, sourceSnapshot))
                 .runConfiguration(EXAMPLE_RUN_CONFIGURATION)
                 .runHooks(ExampleSupport.noopHooks())
                 .call()
                 .contextResult();
 
             behaviorOutput = runBehaviorVerification(runtimeOs, workspace);
+            System.out.println("ATTEMPT_" + attempt + "_VERIFICATION: " + behaviorOutput.trim());
             if (behaviorOutput.contains("BEHAVIOR_OK"))
             {
                 break;
             }
         }
 
-        if (!behaviorOutput.contains("BEHAVIOR_OK"))
-        {
-            applyDeterministicFallbackFix(targetFile);
-            behaviorOutput = runBehaviorVerification(runtimeOs, workspace);
-        }
-
-        Assertions.assertNotNull(fixerResult, "Expected fixer output");
+        Assertions.assertNotNull(debuggerResult, "Expected debugger output");
+        Assertions.assertTrue(debuggerResult.getFinalOutput() != null && !debuggerResult.getFinalOutput().isBlank(),
+            "Expected debugger summary output");
         Assertions.assertTrue(behaviorOutput.contains("BEHAVIOR_OK"), "Expected runtime verification output: " + behaviorOutput);
+        System.out.println("FINAL_VERIFICATION: " + behaviorOutput.trim());
     }
 
-    private static Agent createFixerAgent(RuntimeOs runtimeOs, Path workspace)
+    private static Agent createDebuggerAgent(RuntimeOs runtimeOs, Path workspace)
     {
         AgentDefinition def = new AgentDefinition();
-        def.setId("react25-fixer");
-        def.setName("Complex Fixer");
+        def.setId("react25-debugger");
+        def.setName("Complex ReAct Debugger");
         def.setModel(MODEL);
         def.setReactEnabled(true);
         def.setSystemPrompt("""
-            Fix InvoiceSummaryEngine.java quickly.
+            You are a Java debugging agent working in a local workspace.
 
-            Known defects:
-            1) for-loop starts at 1, must start at 0.
-            2) food tax returns 0.18, must return 0.08.
-            3) round2 uses *10.0, must use *100.0.
+            Goal:
+            Make verifier output include BEHAVIOR_OK with:
+            - caseA = 102.6
+            - caseB = 52.0
 
-            Required outputs:
-            - calculateTotal([20,30,50], "food", true) == 102.6
-            - calculateTotal([10,40], "book", false) == 52.0
-            OS: %s. Workspace: %s
+            Known defects in this scenario to verify and fix:
+            1) subtotal loop starts at 1 and should start at 0.
+            2) food tax is 0.18 and should be 0.08.
+            3) round2 uses *10.0 and should use *100.0.
 
-            Use apply_patch exactly once, then run verifier command once, then brief summary.
+            Constraints:
+            - Use apply_patch for edits.
+            - Use paths relative to workspace in apply_patch operations.
+            - Use simple diff lines (context / '-' remove / '+' add).
+            - Avoid git/unified headers (diff --git, ---, +++, @@).
+            - Prefer one minimal patch that fixes all identified defects.
 
             apply_patch format:
-            {"operation":{"type":"update_file","path":"InvoiceSummaryEngine.java","diff":"..."}}
+            {"operation":{"type":"update_file","path":"...","diff":"..."}}
 
             Simple diff example:
             -        for (int i = 1; i < items.length; i++) {
             +        for (int i = 0; i < items.length; i++) {
-                     subtotal += items[i];
-                 }
-             ...
-            -        return 0.18;
-            +        return 0.08;
-             ...
+            ...
+            -            return 0.18;
+            +            return 0.08;
+            ...
             -        return Math.round(value * 10.0) / 10.0;
             +        return Math.round(value * 100.0) / 100.0;
+
+            Runtime OS: %s
+            Workspace: %s
             """.formatted(runtimeOs.displayName, workspace));
-        def.setReactInstructions("Keep thoughts short. No explanations beyond one-line summary.");
-        def.setToolNames(List.of("apply_patch", "local_shell"));
+        def.setReactInstructions("Keep output concise: root causes + patch summary.");
+        def.setToolNames(List.of("apply_patch"));
         def.setModelProviderOptions(Map.of("working_directory", workspace.toString()));
         def.setModelReasoning(Map.of("effort", "low"));
         return new Agent(def);
     }
 
-    private static String buildFixerPrompt(RuntimeOs runtimeOs, Path workspace, Path targetFile, int attempt, String behaviorOutput) throws IOException
+    private static String buildDebuggerPrompt(RuntimeOs runtimeOs, Path workspace, int attempt, String behaviorOutput, String sourceSnapshot)
     {
         return """
-            Attempt %d/2. Fix InvoiceSummaryEngine.java now.
+            Debug attempt: %d
 
             Current verifier output:
             %s
 
-            Current source:
+            Expected behavior:
+            - caseA should become 102.6
+            - caseB should become 52.0
+            - output should include BEHAVIOR_OK
+            - fix aggregation logic, tax logic, and rounding logic.
+
+            Current source snapshot (InvoiceSummaryEngine.java):
             %s
 
-            Runtime OS: %s
-            Workspace: %s
-            Verify command: %s
-            """.formatted(attempt, behaviorOutput, Files.readString(targetFile), runtimeOs.displayName, workspace, runtimeOs.verifyCommand(workspace));
+            Please patch based on the verifier output and source snapshot. External verification will run after your response.
+            """.formatted(attempt, behaviorOutput, sourceSnapshot);
     }
 
     private static void stageVerifierSource(Path targetVerifierFile) throws IOException
@@ -226,25 +232,6 @@ public class Example25ComplexReActDebugFixTest
         return RuntimeOs.LINUX;
     }
 
-    private static void applyDeterministicFallbackFix(Path targetFile) throws IOException
-    {
-        String source = Files.readString(INPUT_FILE);
-        String patched = source
-            .replace("for (int i = 1; i < items.length; i++)", "for (int i = 0; i < items.length; i++)")
-            .replace("return 0.18;", "return 0.08;")
-            .replace("Math.round(value * 10.0) / 10.0", "Math.round(value * 100.0) / 100.0");
-        Files.writeString(targetFile, patched);
-    }
-
-    private static LocalShellTool createShellTool()
-    {
-        ToolDefinition definition = new ToolDefinition(
-            "local_shell",
-            "Execute a local shell command and return stdout/stderr.",
-            List.of(new ToolParameterSchema("command", "string", true, "Shell command to execute")));
-        return new LocalShellTool(definition);
-    }
-
     private enum RuntimeOs
     {
         WINDOWS("windows"),
@@ -256,15 +243,6 @@ public class Example25ComplexReActDebugFixTest
         RuntimeOs(String displayName)
         {
             this.displayName = displayName;
-        }
-
-        private String verifyCommand(Path workspace)
-        {
-            return switch (this)
-            {
-                case WINDOWS -> "cmd /c \"cd /d \"" + workspace + "\" && javac InvoiceSummaryEngine.java InvoiceSummaryEngineVerifier.java && java InvoiceSummaryEngineVerifier\"";
-                case MACOS, LINUX -> "cd '" + workspace + "' && javac InvoiceSummaryEngine.java InvoiceSummaryEngineVerifier.java && java InvoiceSummaryEngineVerifier";
-            };
         }
     }
 
@@ -306,8 +284,13 @@ public class Example25ComplexReActDebugFixTest
                 {
                     return ApplyPatchResult.failed("File not found: " + operation.getPath());
                 }
+                String diff = operation.getDiff();
+                if (containsUnsupportedDiffMarkers(diff))
+                {
+                    return ApplyPatchResult.failed("Unsupported diff format. Use simple diff only with context/'-'/'+' lines.");
+                }
                 String original = Files.readString(path);
-                String updated = ApplyPatchTool.applyDiff(original, operation.getDiff());
+                String updated = applySmartDiff(original, diff);
                 Files.writeString(path, updated);
                 return ApplyPatchResult.completed("Updated " + operation.getPath());
             }
@@ -334,12 +317,132 @@ public class Example25ComplexReActDebugFixTest
 
         private Path safeResolve(String relativePath)
         {
-            Path candidate = root.resolve(relativePath).normalize();
-            if (!candidate.startsWith(root))
+            Path raw = Path.of(relativePath == null ? "" : relativePath).normalize();
+            Path candidate;
+            if (raw.isAbsolute())
             {
-                throw new IllegalArgumentException("Path escapes workspace: " + relativePath);
+                candidate = raw;
             }
-            return candidate;
+            else
+            {
+                candidate = root.resolve(raw).normalize();
+            }
+            if (candidate.startsWith(root) && Files.exists(candidate))
+            {
+                return candidate;
+            }
+
+            // Graceful fallback for model-generated long paths: keep file name in workspace.
+            Path fileName = raw.getFileName();
+            if (fileName != null)
+            {
+                Path byName = root.resolve(fileName).normalize();
+                if (byName.startsWith(root))
+                {
+                    return byName;
+                }
+            }
+            throw new IllegalArgumentException("Path escapes workspace: " + relativePath);
+        }
+
+        private static boolean containsUnsupportedDiffMarkers(String diff)
+        {
+            if (diff == null)
+            {
+                return false;
+            }
+            return diff.contains("diff --git")
+                || diff.contains("\n--- ")
+                || diff.contains("\n+++ ")
+                || diff.contains("\n@@");
+        }
+
+        private static String applySmartDiff(String original, String diff)
+        {
+            if (looksLikeReplacementOnlyDiff(diff))
+            {
+                return applySimpleReplacementDiff(original, diff);
+            }
+            try
+            {
+                return ApplyPatchTool.applyDiff(original, diff);
+            }
+            catch (Exception ignored)
+            {
+                return applySimpleReplacementDiff(original, diff);
+            }
+        }
+
+        private static boolean looksLikeReplacementOnlyDiff(String diff)
+        {
+            if (diff == null || diff.isBlank())
+            {
+                return false;
+            }
+            boolean hasMinus = false;
+            boolean hasPlus = false;
+            String[] lines = diff.split("\\R", -1);
+            for (String line : lines)
+            {
+                if (line.isBlank())
+                {
+                    continue;
+                }
+                if (line.startsWith("-"))
+                {
+                    hasMinus = true;
+                    continue;
+                }
+                if (line.startsWith("+"))
+                {
+                    hasPlus = true;
+                    continue;
+                }
+                return false;
+            }
+            return hasMinus && hasPlus;
+        }
+
+        private static String applySimpleReplacementDiff(String original, String diff)
+        {
+            if (diff == null || diff.isBlank())
+            {
+                throw new IllegalArgumentException("Empty diff.");
+            }
+
+            String[] lines = diff.split("\\R", -1);
+            String updated = original;
+            String pendingRemoved = null;
+            int replacedCount = 0;
+            for (String line : lines)
+            {
+                if (line.startsWith("-"))
+                {
+                    pendingRemoved = line.substring(1);
+                    continue;
+                }
+                if (line.startsWith("+") && pendingRemoved != null)
+                {
+                    String added = line.substring(1);
+                    int index = updated.indexOf(pendingRemoved);
+                    if (index >= 0)
+                    {
+                        updated = updated.substring(0, index) + added + updated.substring(index + pendingRemoved.length());
+                        replacedCount++;
+                    }
+                    pendingRemoved = null;
+                    continue;
+                }
+                if (!line.isBlank())
+                {
+                    pendingRemoved = null;
+                }
+            }
+            if (replacedCount == 0)
+            {
+                throw new IllegalArgumentException("Simple replacement diff did not match any content.");
+            }
+            return updated;
         }
     }
 }

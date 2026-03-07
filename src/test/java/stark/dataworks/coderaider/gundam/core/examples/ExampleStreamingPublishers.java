@@ -67,6 +67,22 @@ final class ExampleStreamingPublishers
         }
     }
 
+    private static String compact(Object value)
+    {
+        String text = toJsonOrString(value);
+        if (text == null)
+        {
+            return "null";
+        }
+        String normalized = text.replace("\r", " ").replace("\n", " ").trim();
+        int maxLen = 240;
+        if (normalized.length() <= maxLen)
+        {
+            return normalized;
+        }
+        return normalized.substring(0, maxLen) + "...(truncated)";
+    }
+
     private static void printTextDelta(RunEvent event)
     {
         if (event.getType() != RunEventType.MODEL_RESPONSE_DELTA)
@@ -120,14 +136,13 @@ final class ExampleStreamingPublishers
             {
                 String tool = (String) event.getAttributes().get("tool");
                 Object args = event.getAttributes().get("arguments");
-                System.out.println("\n[" + toolPrefix + "Tool call: " + tool + " with arguments: " + toJsonOrString(args) + "]");
+                System.out.println("\n[" + toolPrefix + "Tool call: " + tool + " with arguments: " + compact(args) + "]");
             }
             else if (event.getType() == RunEventType.TOOL_CALL_COMPLETED)
             {
                 String tool = (String) event.getAttributes().get("tool");
                 Object result = event.getAttributes().get("result");
-                System.out.println("[" + toolPrefix + "Tool completed: " + tool + " with result: " + toJsonOrString(result) + "]");
-                System.out.print("Continuing stream: ");
+                System.out.println("[" + toolPrefix + "Tool completed: " + tool + " with result: " + compact(result) + "]");
             }
         }
     }
