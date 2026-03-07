@@ -142,7 +142,7 @@ public class Example25ComplexReActDebugFixTest
             1. Read: %s
             2. Apply ONE patch fixing ALL 3 bugs
             3. Verify: %s
-            4. Output [Answer] block with summary when BEHAVIOR_OK
+            4. Output FINAL SUMMARY when BEHAVIOR_OK
 
             THREE BUGS TO FIX IN ONE PATCH:
             Bug 1: for (int i = 1 -> for (int i = 0
@@ -156,13 +156,20 @@ public class Example25ComplexReActDebugFixTest
             +            return 0.08;
             -        return Math.round(value * 10.0) / 10.0;
             +        return Math.round(value * 100.0) / 100.0;
+
+            SUMMARY FORMAT (output after BEHAVIOR_OK):
+            ## Summary
+            **Problem**: Brief description of the bugs found
+            **Root Cause**: Why the bugs occurred
+            **Fix Applied**: What changes were made
+            **Verification**: Test results confirming the fix
             """.formatted(runtimeOs.printFileCommand(workspace, "InvoiceSummaryEngine.java"),
                           runtimeOs.verifyCommand(workspace)));
         def.setReactInstructions("""
             1. Read file to confirm content
             2. Apply ONE patch with the EXACT diff above (all 3 fixes)
             3. Run verification
-            4. When BEHAVIOR_OK: output [Answer] with 2-3 sentence summary of what was fixed
+            4. When BEHAVIOR_OK: output Summary in Markdown format with Problem, Root Cause, Fix Applied, Verification sections
             Keep thoughts to 1 line each.
             """);
         def.setToolNames(List.of("apply_patch", "local_shell"));
