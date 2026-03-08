@@ -4,11 +4,11 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>stark.dataworks.coderaider</groupId>
-    <artifactId>gundam-core</artifactId>
+    <artifactId>generic-agent-core</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <name>gundam-core</name>
+    <name>generic-agent-core</name>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
