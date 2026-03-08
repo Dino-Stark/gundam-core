@@ -33,7 +33,6 @@ public class ContextItem
      *
      * @param type       type discriminator.
      * @param content    content.
-     * @param Map<String map<string.
      * @param metadata   metadata map.
      */
     public ContextItem(ContextItemType type, String content, Map<String, Object> metadata)

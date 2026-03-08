@@ -13,6 +13,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.locks.ReentrantLock;
 
 import lombok.AllArgsConstructor;
+import lombok.Getter;
 import stark.dataworks.coderaider.gundam.core.agent.IAgent;
 import stark.dataworks.coderaider.gundam.core.agent.IAgentRegistry;
 import stark.dataworks.coderaider.gundam.core.approval.ToolApprovalDecision;
@@ -97,6 +98,7 @@ public class AgentRunner
     /**
      * Registry used to resolve agents by id.
      */
+    @Getter
     private final IAgentRegistry agentRegistry;
 
     /**
@@ -285,12 +287,6 @@ public class AgentRunner
             return new AgentRunner(llmClientRegistry, toolRegistry, agentRegistry, contextBuilder, hookManager, guardrailEngine, handoffRouter,
                 sessionStore, traceProvider, toolApprovalPolicy, outputSchemaRegistry, outputValidator, eventPublisher);
         }
-    }
-
-
-    public IAgentRegistry getAgentRegistry()
-    {
-        return agentRegistry;
     }
 
     public AgentChatClient chatClient(String defaultAgentId)
@@ -992,7 +988,6 @@ public class AgentRunner
      * @param context    execution context.
      * @param hooks      hook collection.
      * @param type       type discriminator.
-     * @param Map<String map<string.
      * @param attributes attribute map.
      */
     private void emit(RunnerContext context, IRunHooks hooks, RunEventType type, Map<String, Object> attributes)
