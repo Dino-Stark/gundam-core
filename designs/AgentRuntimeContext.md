@@ -5,7 +5,7 @@
 **状态**: Proposed  
 **目标仓库**: `gundam-core`  
 **默认代码分支**: `master`  
-**核心集成点**: `stark.dataworks.coderaider.gundam.core.runner.AgentRunner#runInternal`
+**核心集成点**: `stark.dataworks.coderaider.genericagent.core.runner.AgentRunner#runInternal`
 
 ---
 
@@ -237,7 +237,7 @@ public interface IContextManager
 
 ### 5.2 对 `ContextItem` 的设计决策
 
-这里直接回答“到底要不要沿用现有 `stark.dataworks.coderaider.gundam.core.context.ContextItem`”。
+这里直接回答“到底要不要沿用现有 `stark.dataworks.coderaider.genericagent.core.context.ContextItem`”。
 
 本设计的结论是：
 
@@ -1677,7 +1677,7 @@ public interface ICodeIndexSearcher
 ## 21. 推荐包结构
 
 ```text
-stark.dataworks.coderaider.gundam.core.context
+stark.dataworks.coderaider.genericagent.core.context
 ├── IContextManager
 ├── DefaultContextManager
 ├── ContextManagerOptions

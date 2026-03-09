@@ -1,0 +1,45 @@
+package stark.dataworks.coderaider.genericagent.core.workflow.processor;
+
+import stark.dataworks.coderaider.genericagent.core.workflow.IWorkflowVertexProcessor;
+import stark.dataworks.coderaider.genericagent.core.workflow.WorkflowVertexDefinition;
+import stark.dataworks.coderaider.genericagent.core.workflow.WorkflowVertexResult;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+/**
+ * JoinFieldsWorkflowProcessor implements workflow DAG field-join behavior.
+ */
+public class JoinFieldsWorkflowProcessor implements IWorkflowVertexProcessor
+{
+    /**
+     * Processes the supplied workflow/tracing input.
+     *
+     * @param vertex vertex.
+     * @param state  state.
+     * @return workflow vertex result.
+     */
+    @Override
+    public WorkflowVertexResult process(WorkflowVertexDefinition vertex, Map<String, Object> state)
+    {
+        Object fieldsObj = vertex.getConfig().getOrDefault("fields", List.of());
+        @SuppressWarnings("unchecked")
+        List<String> fields = fieldsObj instanceof List<?> list
+            ? list.stream().map(String::valueOf).collect(Collectors.toList())
+            : List.of();
+
+        String separator = String.valueOf(vertex.getConfig().getOrDefault("separator", "\n"));
+        String outputKey = String.valueOf(vertex.getConfig().getOrDefault("outputKey", "finalOutput"));
+
+        String joined = fields.stream()
+            .map(field -> String.valueOf(state.getOrDefault(field, "")))
+            .filter(value -> !value.isBlank())
+            .collect(Collectors.joining(separator));
+
+        Map<String, Object> outputs = new HashMap<>();
+        outputs.put(outputKey, joined);
+        return WorkflowVertexResult.ofOutputs(outputs);
+    }
+}

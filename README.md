@@ -1,8 +1,6 @@
-# GUNDAM-core
+# Generic Agent Core
 
-> **Generic Ultimate Neural-linked Data-driven AI Model Core**
-
-GUNDAM-core is a modular, provider-agnostic, declarative-first Agent Runtime Kernel.
+generic-agent-core is a modular, provider-agnostic, declarative-first Agent Runtime Kernel.
 
 It is not a demo framework.  
 It is not a wrapper around an API.  
@@ -15,7 +13,7 @@ It is the engine.
 
 # Supported Features
 
-GUNDAM-core currently supports the following runtime capabilities:
+generic-agent-core currently supports the following runtime capabilities:
 
 - Constructing and running a single agent with provider-agnostic LLM backends
 - Local tool calling with typed tool schemas and runtime registration
@@ -34,7 +32,7 @@ GUNDAM-core currently supports the following runtime capabilities:
 
 # Vision
 
-GUNDAM-core is designed to be:
+generic-agent-core is designed to be:
 
 - A runtime kernel for LLM-based Agents
 - 100% feature-compatible with OpenAI's Agent SDK
@@ -83,7 +81,7 @@ It is a runtime engine:
 
 ## 3. Strict Separation of Concerns
 
-GUNDAM-core MUST NOT include:
+generic-agent-core MUST NOT include:
 
 - Tenant logic
 - Permission logic
@@ -120,7 +118,7 @@ Only hook interfaces and lifecycle triggers are included.
 
 # Feature Parity Target
 
-GUNDAM-core must be feature-complete compared to openai-agents-python.
+generic-agent-core must be feature-complete compared to openai-agents-python.
 
 Including:
 
@@ -148,7 +146,7 @@ Plus:
 # Module Structure
 
 ```
-gundam-core
+generic-agent-core
 │
 ├── agent
 │   ├── IAgent
@@ -294,7 +292,7 @@ Those belong to outer platform layers.
 
 # Final Statement
 
-GUNDAM-core is not a wrapper.
+generic-agent-core is not a wrapper.
 
 It is not a convenience layer.
 
@@ -372,10 +370,10 @@ Run each JUnit test class directly from IDE (single test run), with `.env.local`
 
 ```bash
 # Run all example tests
-mvn -Dtest="stark.dataworks.coderaider.gundam.core.examples.Example*Test" test
+mvn -Dtest="stark.dataworks.coderaider.genericagent.core.examples.Example*Test" test
 
 # Run one specific example test
-mvn -Dtest=stark.dataworks.coderaider.gundam.core.examples.Example03AgentWithMcpTest test
+mvn -Dtest=stark.dataworks.coderaider.genericagent.core.examples.Example03AgentWithMcpTest test
 ```
 
 For Example04 and Example05, start their corresponding MCP servers first:
@@ -425,9 +423,9 @@ toolRegistry.registerSpringToolObjects(new WeatherTools());
 // or: toolRegistry.registerSpringToolCallbacks(callback1, callback2)
 ```
 
-Any Spring AI tool object using `org.springframework.ai.tool.annotation.Tool` is automatically converted to GUNDAM `ITool` definitions and executable callbacks.
+Any Spring AI tool object using `org.springframework.ai.tool.annotation.Tool` is automatically converted to generic-agent `ITool` definitions and executable callbacks.
 
 ## Architecture & planning notes
 
-- `designs/GUNDAM-core-Architecture.md`
-- `designs/OpenAI-AgentSDK-vs-GUNDAM-core.md` (feature comparison + progress + next steps)
+- `designs/generic-agent-core-Architecture.md`
+- `designs/OpenAI-AgentSDK-vs-generic-agent-core.md` (feature comparison + progress + next steps)

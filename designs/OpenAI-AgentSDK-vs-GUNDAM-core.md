@@ -127,19 +127,19 @@ The following examples have been added to demonstrate new features:
 
 ## New classes and packages
 
-### Tracking Package (`stark.dataworks.coderaider.gundam.core.tracking`)
+### Tracking Package (`stark.dataworks.coderaider.genericagent.core.tracking`)
 
 - `AgentToolUseTracker`: Tracks which tools each agent has used during a run. Supports serialization/hydration for session persistence.
 - `ToolUseTrackerSerializer`: Utility methods for serializing and hydrating tracker state.
 
-### Editor Package (`stark.dataworks.coderaider.gundam.core.editor`)
+### Editor Package (`stark.dataworks.coderaider.genericagent.core.editor`)
 
 - `IApplyPatchEditor`: Interface for host-defined editors that apply diffs on disk.
 - `ApplyPatchOperation`: Represents a single apply_patch editor operation (create_file, update_file, delete_file).
 - `ApplyPatchResult`: Optional metadata returned by editor operations.
 - `DiffApplier`: Utility for applying V4A diffs against text inputs.
 
-### Computer Package (`stark.dataworks.coderaider.gundam.core.computer`)
+### Computer Package (`stark.dataworks.coderaider.genericagent.core.computer`)
 
 - `IComputer`: Interface abstracting operations needed to control a computer or browser.
 - `AbstractComputer`: Base implementation providing common functionality.
@@ -147,7 +147,7 @@ The following examples have been added to demonstrate new features:
 - `Environment`: Enum for environment types (mac, windows, ubuntu, browser).
 - `Button`: Enum for mouse button types.
 
-### Tool Package Updates (`stark.dataworks.coderaider.gundam.core.tool.builtin`)
+### Tool Package Updates (`stark.dataworks.coderaider.genericagent.core.tool.builtin`)
 
 - `ApplyPatchTool`: Hosted tool for file mutations via unified diffs.
 - `ComputerTool`: Updated with full implementation supporting all computer operations.
