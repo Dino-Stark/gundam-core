@@ -143,6 +143,9 @@ Current suite:
 26. `Example26AgentAsToolTest`
 27. `Example27WorkflowAsToolTest`
 28. `Example28AgentInWorkflowThenCalledByAnotherAgentTest`
+29. `Example31PdfToolTest`
+30. `Example32BingWebSearchToolTest`
+31. `Example33PlannerReActDebugFixTest`
 
 > Note: examples are designed for real LLM calls and streaming event output.
 
@@ -160,6 +163,7 @@ Environment variables (or `.env.local` used by tests):
 
 - `MODEL_SCOPE_API_KEY`
 - `VOLCENGINE_API_KEY` (needed for some multi-provider examples)
+- `BING_SEARCH_V7_SUBSCRIPTION_KEY` (needed for real Bing web search tool examples)
 
 ### Run tests/examples
 

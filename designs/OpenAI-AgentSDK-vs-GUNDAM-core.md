@@ -16,7 +16,7 @@ This document compares the current capabilities of:
 |---|---|---|---|
 | Core agent loop (model -> tools -> continue) | ✅ | ✅ | `AgentRunner` owns turn orchestration, retries, hooks, guardrails, handoff. |
 | Streaming token events | ✅ | ✅ | `runStreamed` + run event publication (`MODEL_RESPONSE_DELTA`, reasoning delta). |
-| Tool calling (local tools) | ✅ | ✅ | Includes typed tool schemas and execution hooks. |
+| Tool calling (local tools) | ✅ | ✅ | Includes typed tool schemas and execution hooks, now with real Bing web search and PDF text extraction built-ins. |
 | MCP tool integration | ✅ | ✅ | stdio, HTTP, streamable-HTTP MCP clients and manager. |
 | Agent handoff orchestration | ✅ | ✅ | `HandoffRouter`, allow-lists, and history filtering extensions. |
 | Guardrails | ✅ | ✅ | Input/output guardrail engine with tripwire semantics. |
@@ -76,7 +76,7 @@ Legend: ✅ implemented, 🟡 partial, ⚪ not implemented.
 
 ## Example coverage alignment
 
-The examples package contains **28 streaming-oriented test cases** (`Example01` ~ `Example28`) demonstrating the maturity areas above, including:
+The examples package contains **33 streaming-oriented test cases** (`Example01` ~ `Example33`) demonstrating the maturity areas above, including:
 
 - basic and multi-round agent loops,
 - tools and MCP,
@@ -86,8 +86,8 @@ The examples package contains **28 streaming-oriented test cases** (`Example01` 
 - multimodal input/output,
 - RAG,
 - tool use tracking,
-- patch/computer tools,
-- ReAct-style debugging,
+- patch/computer/pdf/web-search tools,
+- ReAct-style debugging (including planner-first 4-agent mode),
 - agent/workflow composition patterns.
 
 ## Recommended next roadmap

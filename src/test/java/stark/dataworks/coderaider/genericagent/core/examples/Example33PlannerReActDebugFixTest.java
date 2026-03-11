@@ -1,0 +1,322 @@
+package stark.dataworks.coderaider.genericagent.core.examples;
+
+import io.github.cdimascio.dotenv.Dotenv;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import stark.dataworks.coderaider.genericagent.core.agent.AgentDefinition;
+import stark.dataworks.coderaider.genericagent.core.agent.AgentRegistry;
+import stark.dataworks.coderaider.genericagent.core.context.ContextResult;
+import stark.dataworks.coderaider.genericagent.core.editor.ApplyPatchOperation;
+import stark.dataworks.coderaider.genericagent.core.editor.ApplyPatchResult;
+import stark.dataworks.coderaider.genericagent.core.editor.IApplyPatchEditor;
+import stark.dataworks.coderaider.genericagent.core.llmspi.adapter.ModelScopeLlmClient;
+import stark.dataworks.coderaider.genericagent.core.runner.AgentRunner;
+import stark.dataworks.coderaider.genericagent.core.runner.RunConfiguration;
+import stark.dataworks.coderaider.genericagent.core.tool.ToolDefinition;
+import stark.dataworks.coderaider.genericagent.core.tool.ToolParameterSchema;
+import stark.dataworks.coderaider.genericagent.core.tool.ToolRegistry;
+import stark.dataworks.coderaider.genericagent.core.tool.builtin.ApplyPatchTool;
+import stark.dataworks.coderaider.genericagent.core.tool.builtin.LocalShellTool;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+
+/**
+ * 33) Planner-first ReAct debug workflow with 4 agents: understand -> plan -> execute -> summarize.
+ */
+public class Example33PlannerReActDebugFixTest
+{
+    private static final String MODEL = "Qwen/Qwen3-4B";
+    private static final Path INPUT_FILE_1 = Path.of("src", "test", "resources", "inputs", "BuggyCalcService.java");
+    private static final Path INPUT_FILE_2 = Path.of("src", "test", "resources", "inputs", "BuggyOrderTotalApp.java");
+    private static final RunConfiguration EXAMPLE_RUN_CONFIGURATION =
+        new RunConfiguration(6, null, 0.1, 1200, "auto", "text", Map.of());
+
+    @Test
+    public void run() throws IOException
+    {
+        Dotenv env = Dotenv.configure().filename(".env.local").ignoreIfMalformed().ignoreIfMissing().load();
+        String apiKey = env.get("MODEL_SCOPE_API_KEY", System.getenv("MODEL_SCOPE_API_KEY"));
+        if (apiKey == null || apiKey.isBlank())
+        {
+            System.out.println("Skipping test: MODEL_SCOPE_API_KEY not set");
+            return;
+        }
+
+        RuntimeOs runtimeOs = detectRuntimeOs();
+        Path workspace = Path.of("src", "test", "resources", "outputs", "react-agent", "example30");
+        resetWorkspace(workspace);
+
+        ToolRegistry toolRegistry = new ToolRegistry();
+        toolRegistry.register(createShellTool());
+        toolRegistry.register(new ApplyPatchTool(new FileSystemEditor(workspace), false));
+
+        AgentRegistry agentRegistry = new AgentRegistry();
+        agentRegistry.register(createUnderstandingAgent(runtimeOs, workspace));
+        agentRegistry.register(createPlannerAgent(runtimeOs, workspace));
+        agentRegistry.register(createExecutorAgent(runtimeOs, workspace));
+        agentRegistry.register(createSummarizerAgent(runtimeOs, workspace));
+
+        AgentRunner runner = AgentRunner.builder()
+            .llmClient(new ModelScopeLlmClient(apiKey, MODEL))
+            .toolRegistry(toolRegistry)
+            .agentRegistry(agentRegistry)
+            .eventPublisher(ExampleStreamingPublishers.reactThoughtActionObservation())
+            .build();
+
+        String userRequest = "Fix both Java files quickly and provide a short summary at the end.";
+        ContextResult understanding = runner.chatClient("react30-understanding").prompt().stream(true).user(userRequest)
+            .runConfiguration(EXAMPLE_RUN_CONFIGURATION).runHooks(ExampleSupport.noopHooks()).call().contextResult();
+
+        ContextResult planning = runner.chatClient("react30-planner").prompt().stream(true)
+            .user(understanding.getFinalOutput())
+            .runConfiguration(EXAMPLE_RUN_CONFIGURATION).runHooks(ExampleSupport.noopHooks()).call().contextResult();
+
+        String verifyOutput = runBehaviorVerification(runtimeOs, workspace);
+        ContextResult execution = null;
+        for (int attempt = 1; attempt <= 3; attempt++)
+        {
+            execution = runner.chatClient("react30-executor").prompt().stream(true)
+                .user(buildExecutorPrompt(runtimeOs, workspace, planning.getFinalOutput(), verifyOutput, attempt))
+                .runConfiguration(EXAMPLE_RUN_CONFIGURATION).runHooks(ExampleSupport.noopHooks()).call().contextResult();
+            verifyOutput = runBehaviorVerification(runtimeOs, workspace);
+            if (verifyOutput.contains("BEHAVIOR_OK"))
+            {
+                break;
+            }
+        }
+
+        ContextResult summary = null;
+        if (!userRequest.toLowerCase(Locale.ROOT).contains("no summary"))
+        {
+            summary = runner.chatClient("react30-summarizer").prompt().stream(true)
+                .user("Plan:\n" + planning.getFinalOutput() + "\nExecution:\n" + execution.getFinalOutput() + "\nVerify:\n" + verifyOutput)
+                .runConfiguration(EXAMPLE_RUN_CONFIGURATION).runHooks(ExampleSupport.noopHooks()).call().contextResult();
+        }
+
+        Assertions.assertTrue(verifyOutput.contains("BEHAVIOR_OK"), "Expected BEHAVIOR_OK but got: " + verifyOutput);
+        Assertions.assertNotNull(understanding.getFinalOutput());
+        Assertions.assertNotNull(planning.getFinalOutput());
+        Assertions.assertNotNull(execution.getFinalOutput());
+        if (summary != null)
+        {
+            Assertions.assertFalse(summary.getFinalOutput().isBlank());
+        }
+    }
+
+    private static String buildExecutorPrompt(RuntimeOs runtimeOs, Path workspace, String plan, String verifyOutput, int attempt)
+    {
+        return """
+            Attempt %d
+            Execute this plan and fix all bugs in BuggyCalcService.java and BuggyOrderTotalApp.java:
+            %s
+
+            Current verification: %s
+            Verify command: %s
+            Keep thoughts minimal and only output necessary steps.
+            """.formatted(attempt, plan, verifyOutput.trim(), runtimeOs.verifyCommand(workspace));
+    }
+
+    private static AgentDefinition createUnderstandingAgent(RuntimeOs runtimeOs, Path workspace)
+    {
+        AgentDefinition def = new AgentDefinition();
+        def.setId("react30-understanding");
+        def.setName("Task Understanding Agent");
+        def.setModel(MODEL);
+        def.setReactEnabled(true);
+        def.setSystemPrompt("Entrance agent. Clarify scope, files, expected output, and summary requirement. Workspace=" + workspace + ", OS=" + runtimeOs.displayName);
+        def.setReactInstructions("Return concise task brief in <=6 lines.");
+        def.setToolNames(List.of("local_shell"));
+        def.setModelProviderOptions(Map.of("working_directory", workspace.toString()));
+        def.setModelReasoning(Map.of("effort", "low"));
+        return def;
+    }
+
+    private static AgentDefinition createPlannerAgent(RuntimeOs runtimeOs, Path workspace)
+    {
+        AgentDefinition def = new AgentDefinition();
+        def.setId("react30-planner");
+        def.setName("Step Planner Agent");
+        def.setModel(MODEL);
+        def.setReactEnabled(true);
+        def.setSystemPrompt("Create a short executable step plan for bug fixing in two connected Java files.");
+        def.setReactInstructions("Output 4-6 numbered steps. No fluff.");
+        def.setToolNames(List.of("local_shell"));
+        def.setModelProviderOptions(Map.of("working_directory", workspace.toString()));
+        def.setModelReasoning(Map.of("effort", "low"));
+        return def;
+    }
+
+    private static AgentDefinition createExecutorAgent(RuntimeOs runtimeOs, Path workspace)
+    {
+        AgentDefinition def = new AgentDefinition();
+        def.setId("react30-executor");
+        def.setName("Step Executor Agent");
+        def.setModel(MODEL);
+        def.setReactEnabled(true);
+        def.setSystemPrompt("Execute plan by reading files, applying patch, and verifying quickly. Use tools directly.");
+        def.setReactInstructions("1) inspect files 2) patch both files 3) run verify command 4) stop when BEHAVIOR_OK. Keep thoughts short.");
+        def.setToolNames(List.of("apply_patch", "local_shell"));
+        def.setModelProviderOptions(Map.of("working_directory", workspace.toString()));
+        def.setModelReasoning(Map.of("effort", "low"));
+        return def;
+    }
+
+    private static AgentDefinition createSummarizerAgent(RuntimeOs runtimeOs, Path workspace)
+    {
+        AgentDefinition def = new AgentDefinition();
+        def.setId("react30-summarizer");
+        def.setName("Task Summary Agent");
+        def.setModel(MODEL);
+        def.setReactEnabled(true);
+        def.setSystemPrompt("Summarize debugging task outcome briefly.");
+        def.setReactInstructions("Output markdown with Problem, Fix, Verification.");
+        def.setToolNames(List.of("local_shell"));
+        def.setModelProviderOptions(Map.of("working_directory", workspace.toString()));
+        def.setModelReasoning(Map.of("effort", "low"));
+        return def;
+    }
+
+    private static void resetWorkspace(Path workspace) throws IOException
+    {
+        if (Files.exists(workspace))
+        {
+            Files.walk(workspace)
+                .sorted((a, b) -> b.getNameCount() - a.getNameCount())
+                .forEach(path ->
+                {
+                    try
+                    {
+                        Files.delete(path);
+                    }
+                    catch (IOException ex)
+                    {
+                        throw new RuntimeException(ex);
+                    }
+                });
+        }
+        Files.createDirectories(workspace);
+        Files.writeString(workspace.resolve("BuggyCalcService.java"), Files.readString(INPUT_FILE_1));
+        Files.writeString(workspace.resolve("BuggyOrderTotalApp.java"), Files.readString(INPUT_FILE_2));
+    }
+
+    private static LocalShellTool createShellTool()
+    {
+        return new LocalShellTool(new ToolDefinition(
+            "local_shell",
+            "Execute a local shell command and return stdout/stderr.",
+            List.of(new ToolParameterSchema("command", "string", true, "Shell command to execute"))));
+    }
+
+    private static String runBehaviorVerification(RuntimeOs runtimeOs, Path workspace)
+    {
+        ProcessBuilder builder = switch (runtimeOs)
+        {
+            case WINDOWS -> new ProcessBuilder("cmd", "/c",
+                "cd /d \"" + workspace + "\" && javac BuggyCalcService.java BuggyOrderTotalApp.java && java BuggyOrderTotalApp");
+            case MACOS, LINUX -> new ProcessBuilder("bash", "-lc",
+                "cd '" + workspace + "' && javac BuggyCalcService.java BuggyOrderTotalApp.java && java BuggyOrderTotalApp");
+        };
+        builder.redirectErrorStream(true);
+        try
+        {
+            Process process = builder.start();
+            String output = new String(process.getInputStream().readAllBytes());
+            process.waitFor();
+            return output;
+        }
+        catch (Exception ex)
+        {
+            return "VERIFY_ERROR: " + ex.getMessage();
+        }
+    }
+
+    private static RuntimeOs detectRuntimeOs()
+    {
+        String osName = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+        if (osName.contains("win"))
+        {
+            return RuntimeOs.WINDOWS;
+        }
+        if (osName.contains("mac"))
+        {
+            return RuntimeOs.MACOS;
+        }
+        return RuntimeOs.LINUX;
+    }
+
+    private enum RuntimeOs
+    {
+        WINDOWS("Windows"),
+        MACOS("macOS"),
+        LINUX("Linux");
+
+        private final String displayName;
+
+        RuntimeOs(String displayName)
+        {
+            this.displayName = displayName;
+        }
+
+        private String verifyCommand(Path workspace)
+        {
+            return switch (this)
+            {
+                case WINDOWS -> "cd /d \"" + workspace + "\" && javac BuggyCalcService.java BuggyOrderTotalApp.java && java BuggyOrderTotalApp";
+                case MACOS, LINUX -> "cd '" + workspace + "' && javac BuggyCalcService.java BuggyOrderTotalApp.java && java BuggyOrderTotalApp";
+            };
+        }
+    }
+
+    private static final class FileSystemEditor implements IApplyPatchEditor
+    {
+        private final Path workspaceRoot;
+
+        private FileSystemEditor(Path workspaceRoot)
+        {
+            this.workspaceRoot = workspaceRoot.toAbsolutePath().normalize();
+        }
+
+        @Override
+        public ApplyPatchResult apply(ApplyPatchOperation operation)
+        {
+            if (operation == null || operation.getPath() == null || operation.getType() == null)
+            {
+                return ApplyPatchResult.error("Invalid operation");
+            }
+            Path target = workspaceRoot.resolve(operation.getPath()).normalize();
+            if (!target.startsWith(workspaceRoot))
+            {
+                return ApplyPatchResult.error("Path escapes workspace");
+            }
+            try
+            {
+                return switch (operation.getType())
+                {
+                    case "update_file" -> update(target, operation.getDiff());
+                    default -> ApplyPatchResult.error("Unsupported operation type: " + operation.getType());
+                };
+            }
+            catch (IOException ex)
+            {
+                return ApplyPatchResult.error("Patch failed: " + ex.getMessage());
+            }
+        }
+
+        private ApplyPatchResult update(Path target, String diff) throws IOException
+        {
+            if (!Files.exists(target))
+            {
+                return ApplyPatchResult.error("File not found: " + target.getFileName());
+            }
+            String source = Files.readString(target);
+            String patched = stark.dataworks.coderaider.genericagent.core.editor.SimpleDiffPatcher.apply(source, diff);
+            Files.writeString(target, patched);
+            return ApplyPatchResult.success("updated: " + target.getFileName());
+        }
+    }
+}

@@ -103,7 +103,7 @@ class McpAndErrorHandlingTest
     @Test
     void builtinToolEcosystemHasWebSearchTool()
     {
-        WebSearchTool tool = new WebSearchTool(new ToolDefinition("web_search", "", List.of()));
-        assertTrue(tool.execute(Map.of("query", "gundam")).contains("gundam"));
+        WebSearchTool tool = new WebSearchTool(new ToolDefinition("web_search", "", List.of()), "");
+        assertTrue(tool.execute(Map.of("query", "gundam")).contains("missing Bing subscription key"));
     }
 }
