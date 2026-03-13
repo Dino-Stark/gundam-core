@@ -177,6 +177,14 @@ public final class DiffApplier
 
     private static String applySimpleDiff(String input, List<String> diffLines, String newline)
     {
+        // Try simple string replacement for minimal diffs first
+        String simpleResult = trySimpleStringReplacement(diffLines, input);
+        if (simpleResult != null)
+        {
+            return simpleResult;
+        }
+
+        // Fall back to line-by-line processing
         String[] inputLines = input.split("\n", -1);
         List<String> result = new ArrayList<>();
         int inputIndex = 0;
@@ -234,6 +242,67 @@ public final class DiffApplier
         }
 
         return String.join(newline, result);
+    }
+
+    /**
+     * Simple string-based replacement for minimal diffs.
+     * Much safer than line-by-line approach.
+     */
+    private static String trySimpleStringReplacement(List<String> diffLines, String input)
+    {
+        List<String> removed = new ArrayList<>();
+        List<String> added = new ArrayList<>();
+
+        for (String line : diffLines)
+        {
+            if (line.startsWith("diff --git") || line.startsWith("index ") ||
+                line.startsWith("new file mode") || line.startsWith("--- ") ||
+                line.startsWith("+++ ") || line.startsWith("@@"))
+            {
+                continue;
+            }
+
+            if (line.startsWith("-") && !line.startsWith("---"))
+            {
+                removed.add(line.substring(1));
+            }
+            else if (line.startsWith("+") && !line.startsWith("+++"))
+            {
+                added.add(line.substring(1));
+            }
+            else if (line.startsWith(" "))
+            {
+                // Context line - this diff is not simple replacement only
+                return null;
+            }
+        }
+
+        if (removed.isEmpty() || added.isEmpty())
+        {
+            return null;
+        }
+
+        // Apply replacements as string operations
+        String result = input;
+        int maxPairs = Math.min(removed.size(), added.size());
+        for (int i = 0; i < maxPairs; i++)
+        {
+            String oldStr = removed.get(i);
+            String newStr = added.get(i);
+            
+            // Try exact match first
+            int index = result.indexOf(oldStr);
+            if (index >= 0)
+            {
+                result = result.substring(0, index) + newStr + result.substring(index + oldStr.length());
+                continue;
+            }
+            
+            // If no exact match, this diff needs context - return null
+            return null;
+        }
+
+        return result;
     }
 
     private static String extractAnchor(List<String> lines)

@@ -18,9 +18,23 @@ import stark.dataworks.coderaider.genericagent.core.tool.ToolParameterSchema;
 public class ApplyPatchTool implements ITool
 {
     private static final String TOOL_NAME = "apply_patch";
-    private static final String TOOL_DESCRIPTION = "Apply file operations using patch-style operations. " +
-        "Accepted payloads: {type,path,diff|content} or {operation:{type,path,diff|content}}. " +
-        "Supported types: 'create_file' (or 'create'), 'update_file' (or 'update'), 'delete_file' (or 'delete').";
+    private static final String TOOL_DESCRIPTION = """
+        Apply code changes to fix bugs or implement features.
+        
+        Usage: {"type":"update_file","path":"FileName.java","diff":"- old line\\n+ new line"}
+        
+        Types: create_file, update_file, delete_file
+        
+        Diff format:
+        - Lines starting with '-' are removed (must match original exactly)
+        - Lines starting with '+' are added
+        - Each change is one '-' line followed by one '+' line
+        
+        Rules:
+        - Copy '-' lines EXACTLY from the original file (including whitespace)
+        - Multiple changes: list them in order
+        - Keep diffs minimal - only include lines that change
+        """;
 
     private final IApplyPatchEditor editor;
     private final boolean needsApproval;
@@ -44,15 +58,16 @@ public class ApplyPatchTool implements ITool
             TOOL_NAME,
             TOOL_DESCRIPTION,
             List.of(
-                new ToolParameterSchema("type", "string", false,
+                new ToolParameterSchema("type", "string", true,
                     "Operation type: create_file, update_file, delete_file (aliases: create/update/delete)."),
-                new ToolParameterSchema("path", "string", false, "Target file path, relative to workspace when possible."),
+                new ToolParameterSchema("path", "string", true, "Target file path, relative to workspace when possible."),
                 new ToolParameterSchema("diff", "string", false, "Patch diff content for create/update operations."),
-                new ToolParameterSchema("content", "string", false, "Raw file content for create_file when diff is omitted."),
-                new ToolParameterSchema("operation", "object", false,
-                    "Nested operation object alternative: {type, path, diff|content}."),
-                new ToolParameterSchema("raw", "string", false,
-                    "Raw JSON fallback when the model emits a serialized tool payload.")
+                new ToolParameterSchema("content", "string", false, "Raw file content for create_file when diff is omitted.")
+//                ,
+//                new ToolParameterSchema("operation", "object", true,
+//                    "Nested operation object alternative: {type, path, diff|content}."),
+//                new ToolParameterSchema("raw", "string", true,
+//                    "Raw JSON fallback when the model emits a serialized tool payload.")
             )
         );
     }

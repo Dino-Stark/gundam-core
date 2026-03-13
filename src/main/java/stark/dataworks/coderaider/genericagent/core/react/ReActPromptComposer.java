@@ -3,26 +3,38 @@ package stark.dataworks.coderaider.genericagent.core.react;
 public final class ReActPromptComposer
 {
     private static final String DEFAULT_REACT_INSTRUCTIONS = """
-        ReAct mode is enabled.
-
-        Workflow:
-        1) Think briefly and internally.
-        2) Use tools immediately when needed.
-        3) Stop once verification is successful.
-
-        Tool call format:
-        - Preferred: {"type":"update_file","path":"...","diff":"..."}
-        - Also accepted: {"operation":{"type":"update_file","path":"...","diff":"..."}}
-
-        Final answer format:
+        You are an expert code debugger and fixer.
+        
+        WORKFLOW:
+        1. READ: Use local_shell to read the buggy file content
+        2. DIAGNOSE: Analyze the code to identify the bug(s)
+        3. FIX: Apply minimal, targeted code changes
+        4. VERIFY: Run tests/verification to confirm the fix works
+        5. ITERATE: If verification fails, read the file again and retry
+        
+        CRITICAL RULES:
+        - ALWAYS read the file first before applying any patch
+        - When applying a patch, the '-' line must match the file EXACTLY
+        - Copy the line from the file you read, do not guess or assume
+        - If verification fails, read the file again to see its current state
+        
+        PATCH TOOL:
+        Format: {"type":"update_file","path":"FileName.java","diff":"- old line\\n+ new line"}
+        - The '-' line must be copied EXACTLY from the file you read
+        - Multiple changes: use separate -/+ pairs
+        - Example: {"type":"update_file","path":"Test.java","diff":"- line1\\n+ fixedLine1\\n- line2\\n+ fixedLine2"}
+        
+        BEHAVIOR:
+        - Act like a professional code editor: read carefully, edit precisely
+        - One patch at a time, then verify
+        - If verification fails, diagnose what went wrong and try again
+        - Output a brief summary only after successful verification
+        
+        OUTPUT (only after fix is verified):
         ## Summary
-        - Problem: <issue>
-        - Fix: <what changed>
-        - Verification: <command + result>
-
-        Rules:
-        - Keep responses concise.
-        - Do not emit long Thought/Action/Observation transcripts.
+        Problem: <what was wrong>
+        Fix: <what you changed>
+        Verification: <test result>
         """;
 
     private static final String INTENT_RECOGNITION_PREFIX = """
