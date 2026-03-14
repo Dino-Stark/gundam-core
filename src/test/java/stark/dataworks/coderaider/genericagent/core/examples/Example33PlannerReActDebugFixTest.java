@@ -69,6 +69,7 @@ public class Example33PlannerReActDebugFixTest
             .eventPublisher(ExampleStreamingPublishers.textWithToolLifecycle("ReAct33 "))
             .build();
 
+        // TODO: Need to describe the bugs in detail, otherwise, the agent will not even understand the problem.
         String userRequest = "Fix both Java files quickly and provide a short summary at the end.";
         ContextResult understanding = runner.chatClient("react30-understanding").prompt().stream(true).user(userRequest)
             .runConfiguration(EXAMPLE_RUN_CONFIGURATION).runHooks(ExampleSupport.noopHooks()).call().contextResult();
