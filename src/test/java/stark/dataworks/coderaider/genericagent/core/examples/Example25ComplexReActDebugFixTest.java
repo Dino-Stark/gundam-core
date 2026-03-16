@@ -138,8 +138,8 @@ public class Example25ComplexReActDebugFixTest
             You are a Java bug fixer. Think 1 line per step.
 
             WORKFLOW:
-            1. Read: %s
-            2. Apply ONE patch fixing ALL bugs
+            1. Read: %s by the shell tool, then analyze the bugs
+            2. Apply patch(es) fixing ALL bugs
             3. Verify: %s
             4. Output [Answer] block with summary when BEHAVIOR_OK
 
