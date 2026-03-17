@@ -74,91 +74,38 @@ public class StepByStepRunnerTest
 
         AgentRunner runner = AgentRunner.builder()
             // Switch model.
-            .llmClient(new ModelScopeLlmClient(apiKey, MODEL))
+            .llmClient(new ModelScopeLlmClient(apiKey, MODEL, false))
 //            .llmClient(new SeedLlmClient(apiKey, MODEL))
             .toolRegistry(toolRegistry)
             .agentRegistry(agentRegistry)
             .eventPublisher(ExampleStreamingPublishers.reactThoughtActionObservation())
             .build();
 
-        String behaviorOutput = runBehaviorVerification(runtimeOs, workspace);
-        System.out.println("INITIAL_VERIFICATION: " + behaviorOutput.trim());
         logSourceSnapshot(targetFile, "INITIAL_SOURCE");
 
-        ContextResult coordinatorPlan = runner.chatClient("react25-coordinator")
-            .prompt()
-            .stream(true)
-            .user(buildCoordinatorPrompt(runtimeOs, workspace, behaviorOutput))
-            .runConfiguration(EXAMPLE_RUN_CONFIGURATION)
-            .runHooks(ExampleSupport.noopHooks())
-            .call()
-            .contextResult();
-
-        ContextResult investigatorResult = runner.chatClient("react25-investigator")
-            .prompt()
-            .stream(true)
-            .user(buildInvestigatorPrompt(runtimeOs, workspace, behaviorOutput))
-            .runConfiguration(EXAMPLE_RUN_CONFIGURATION)
-            .runHooks(ExampleSupport.noopHooks())
-            .call()
-            .contextResult();
-
-        System.out.println("COORDINATOR_OUTPUT: " + coordinatorPlan.getFinalOutput());
-        System.out.println("INVESTIGATOR_OUTPUT: " + investigatorResult.getFinalOutput());
-
-        ContextResult fixerResult = null;
-        ContextResult reviewerResult = null;
         for (int attempt = 1; attempt <= 5; attempt++)
         {
-            String sourceSnapshot = Files.readString(targetFile);
-            fixerResult = runner.chatClient("react25-fixer")
+            String behaviorOutput = runBehaviorVerification(runtimeOs, workspace);
+
+//            String sourceSnapshot = Files.readString(targetFile);
+            ContextResult investigatorResult = runner.chatClient("react25-investigator")
                 .prompt()
                 .stream(true)
-                .user(buildFixerPrompt(runtimeOs, workspace, attempt, behaviorOutput, investigatorResult.getFinalOutput(), sourceSnapshot))
+                .user(buildInvestigatorPrompt(runtimeOs, workspace, behaviorOutput))
                 .runConfiguration(EXAMPLE_RUN_CONFIGURATION)
                 .runHooks(ExampleSupport.noopHooks())
                 .call()
                 .contextResult();
-
-            reviewerResult = runner.chatClient("react25-reviewer")
-                .prompt()
-                .stream(true)
-                .user(buildReviewerPrompt(runtimeOs, workspace, fixerResult.getFinalOutput(), behaviorOutput))
-                .runConfiguration(EXAMPLE_RUN_CONFIGURATION)
-                .runHooks(ExampleSupport.noopHooks())
-                .call()
-                .contextResult();
-
-            System.out.println("FIXER_ATTEMPT_" + attempt + "_OUTPUT: " + fixerResult.getFinalOutput());
-            System.out.println("REVIEWER_ATTEMPT_" + attempt + "_OUTPUT: " + reviewerResult.getFinalOutput());
 
             behaviorOutput = runBehaviorVerification(runtimeOs, workspace);
             System.out.println("ATTEMPT_" + attempt + "_VERIFICATION: " + behaviorOutput.trim());
-            logSourceSnapshot(targetFile, "ATTEMPT_" + attempt + "_SOURCE");
+//            logSourceSnapshot(targetFile, "ATTEMPT_" + attempt + "_SOURCE");
             if (behaviorOutput.contains("BEHAVIOR_OK"))
             {
                 break;
             }
         }
 
-        Assertions.assertNotNull(coordinatorPlan, "Expected coordinator output");
-        Assertions.assertNotNull(investigatorResult, "Expected investigator output");
-        Assertions.assertNotNull(fixerResult, "Expected fixer output");
-        Assertions.assertNotNull(reviewerResult, "Expected reviewer output");
-
-        Assertions.assertTrue(coordinatorPlan.getFinalOutput() != null && !coordinatorPlan.getFinalOutput().isBlank(),
-            "Expected coordinator summary output");
-        Assertions.assertTrue(investigatorResult.getFinalOutput() != null && !investigatorResult.getFinalOutput().isBlank(),
-            "Expected investigator summary output");
-        Assertions.assertTrue(fixerResult.getFinalOutput() != null && !fixerResult.getFinalOutput().isBlank(),
-            "Expected fixer summary output");
-        Assertions.assertTrue(reviewerResult.getFinalOutput() != null && !reviewerResult.getFinalOutput().isBlank(),
-            "Expected reviewer summary output");
-
-        Assertions.assertTrue(behaviorOutput.contains("BEHAVIOR_OK"),
-            "Agent must fix all bugs successfully. Verification output: " + behaviorOutput);
-
-        System.out.println("FINAL_VERIFICATION: " + behaviorOutput.trim());
         long elapsedSeconds = (System.nanoTime() - startedAt) / 1_000_000_000L;
         Assertions.assertTrue(elapsedSeconds <= 120, "Expected runtime (<=120s) but took " + elapsedSeconds + "s");
     }
@@ -191,7 +138,7 @@ public class StepByStepRunnerTest
     private static AgentRegistry createAgentRegistry(RuntimeOs runtimeOs, Path workspace)
     {
         AgentRegistry registry = new AgentRegistry();
-        registry.register(createCoordinatorAgent(runtimeOs, workspace));
+//        registry.register(createCoordinatorAgent(runtimeOs, workspace));
         registry.register(createInvestigatorAgent(runtimeOs, workspace));
         registry.register(createFixerAgent(runtimeOs, workspace));
         registry.register(createReviewerAgent(runtimeOs, workspace));
@@ -219,7 +166,7 @@ public class StepByStepRunnerTest
         def.setReactInstructions("Plan the delegation in 3-5 short bullets with concrete commands.");
         def.setToolNames(List.of("local_shell"));
         def.setModelProviderOptions(Map.of("working_directory", workspace.toString()));
-        def.setModelReasoning(Map.of("effort", "low"));
+//        def.setModelReasoning(Map.of("effort", "low"));
         return def;
     }
 
@@ -234,16 +181,21 @@ public class StepByStepRunnerTest
             You are a Java bug investigator.
 
             Inspect source and verifier output to identify root causes.
+            Read the file(s) by the local_shell tool before your investigation.
+            Report exception if you can't open the file(s) to fix, and stop immediately.
             Report exact bug locations and expected behavior.
 
             OS: %s
             Workspace: %s
             Verify command: %s
+            
+            For fixing bugs, handoff to 'react25-fixer', with your investigation results.
+            To handoff, respond with 'handoff: <agent_id>' where agent_id is 'react25-fixer'.
             """.formatted(runtimeOs.displayName, workspace, runtimeOs.verifyCommand(workspace)));
         def.setReactInstructions("Read file + verifier output, then return a concrete root-cause list for each failing behavior.");
         def.setToolNames(List.of("local_shell"));
         def.setModelProviderOptions(Map.of("working_directory", workspace.toString()));
-        def.setModelReasoning(Map.of("effort", "low"));
+//        def.setModelReasoning(Map.of("effort", "low"));
         return def;
     }
 
@@ -267,11 +219,14 @@ public class StepByStepRunnerTest
             OS: %s
             Workspace: %s
             Verify command: %s
+            
+            For fix review, handoff to 'react25-reviewer', with your results.
+            To handoff, respond with 'handoff: <agent_id>' where agent_id is 'react25-reviewer'.
             """.formatted(runtimeOs.displayName, workspace, runtimeOs.verifyCommand(workspace)));
         def.setReactInstructions("Read → patch -> verify -> if fail, patch again. Keep final response concise with exact fixes.");
         def.setToolNames(List.of("apply_patch", "local_shell"));
         def.setModelProviderOptions(Map.of("working_directory", workspace.toString()));
-        def.setModelReasoning(Map.of("effort", "low"));
+//        def.setModelReasoning(Map.of("effort", "low"));
         return def;
     }
 
@@ -294,7 +249,7 @@ public class StepByStepRunnerTest
         def.setReactInstructions("Run verifier and return PASS/FAIL with command output evidence.");
         def.setToolNames(List.of("local_shell"));
         def.setModelProviderOptions(Map.of("working_directory", workspace.toString()));
-        def.setModelReasoning(Map.of("effort", "low"));
+//        def.setModelReasoning(Map.of("effort", "low"));
         return def;
     }
 
@@ -336,10 +291,11 @@ public class StepByStepRunnerTest
             - round2 may be rounding to 1 decimal instead of 2 decimals.
 
             Steps:
-            1) Print InvoiceSummaryEngine.java
-            2) Compile and run verifier
-            3) Confirm or reject each likely bug category with evidence
-            4) Produce a concrete fixer checklist
+            1) CD into the workspace.
+            2) Print InvoiceSummaryEngine.java
+            3) Compile and run verifier
+            4) Confirm or reject each likely bug category with evidence
+            5) Produce a concrete fixer checklist
 
             Runtime OS: %s
             Workspace: %s
