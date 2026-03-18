@@ -270,16 +270,27 @@ public class Example24ReActAgentDebugFixTest
     {
         return """
             Attempt %d to fix BuggyCalculator.java.
+
+            === CRITICAL INSTRUCTIONS ===
+            The investigator has already identified the bug. Your job is to EXECUTE the fix, not re-analyze.
             
-            Investigation findings:
+            1. Read the investigation findings below carefully.
+            2. Apply the fix in ONE apply_patch call.
+            3. The patch must contain the EXACT line to change (not comments, but actual code).
+            4. After patching, run the verifier immediately.
+
+            === INVESTIGATION FINDINGS (EXECUTE THIS FIX) ===
             %s
-            
-            Current code:
+
+            === CURRENT CODE ===
             %s
-            
-            Fix the bug and verify with: javac BuggyCalculator.java BuggyCalculatorVerifier.java && java BuggyCalculatorVerifier
-            Target: output should contain BEHAVIOR_OK
-            
+
+            === EXECUTION STEPS ===
+            1. Apply patch for the bug identified by investigator (use apply_patch tool)
+            2. Run verifier: javac BuggyCalculator.java BuggyCalculatorVerifier.java && java BuggyCalculatorVerifier
+            3. If output shows BEHAVIOR_OK, handoff to reviewer
+            4. If patch fails, re-read the file and try once more with correct content
+
             OS: %s
             Workspace: %s
             """.formatted(attempt, investigationOutput, sourceSnapshot, runtimeOs.displayName, workspace);

@@ -355,21 +355,32 @@ public class Example25ComplexReActDebugFixTest
         return """
             Attempt %d to fix InvoiceSummaryEngine.java.
 
-            Investigator findings:
+            === CRITICAL INSTRUCTIONS ===
+            The investigator has already identified all the bugs. Your job is to EXECUTE the fixes, not re-analyze.
+            
+            1. Read the investigator's findings below carefully.
+            2. Apply ALL fixes in ONE or TWO apply_patch calls maximum.
+            3. Each patch must contain the EXACT lines to change (not comments, but actual code).
+            4. After patching, run the verifier immediately.
+            5. If the first patch attempt fails, re-read the file and try once more with correct content.
+
+            === INVESTIGATOR FINDINGS (EXECUTE THESE FIXES) ===
             %s
 
-            Required behavior contract:
+            === REQUIRED BEHAVIOR CONTRACT ===
             %s
 
-            Current verification status:
+            === CURRENT VERIFICATION STATUS ===
             %s
 
-            Current code:
+            === CURRENT CODE ===
             %s
 
-            Fix all bugs and verify with: %s
-            Target: output should contain BEHAVIOR_OK
-            Do not stop at partial fixes. Keep patching until both caseA and caseB pass.
+            === EXECUTION STEPS ===
+            1. Apply patches for ALL bugs identified by investigator (use apply_patch tool)
+            2. Run verifier: %s
+            3. If output shows BEHAVIOR_OK, handoff to reviewer
+            4. If still failing, read file again and apply one more targeted fix
 
             OS: %s
             Workspace: %s
@@ -736,6 +747,7 @@ public class Example25ComplexReActDebugFixTest
             }
             
             String[] lines = diff.split("\\R", -1);
+            
             for (String line : lines)
             {
                 if (line.isBlank()) continue;
@@ -746,32 +758,19 @@ public class Example25ComplexReActDebugFixTest
                     if (line.startsWith(" ") || line.startsWith("\t"))
                     {
                         throw new IllegalArgumentException(
-                            "Invalid diff format: line '" + line.substring(0, Math.min(40, line.length())) + 
-                            "...' starts with whitespace but is not a valid context line.\n" +
-                            "For simple replacement diff, ALL lines must start with '-' or '+'.\n" +
-                            "Please check your diff format and ensure proper '-old' and '+new' pairs."
+                            "INVALID DIFF FORMAT!\n\n" +
+                            "Problem: Line '" + line.substring(0, Math.min(40, line.length())) + "...' starts with whitespace.\n\n" +
+                            "SOLUTION: For simple diff, EVERY line must start with '-' (old) or '+' (new).\n\n" +
+                            "Example of CORRECT diff to change a return value:\n" +
+                            "  -        return 0.18\n" +
+                            "  +        return 0.08\n\n" +
+                            "Do NOT include lines that don't change. Only include the ACTUAL lines being modified."
                         );
                     }
                 }
-                
-                // Check for - and + lines with identical content (no actual change)
-                if (line.startsWith("-") && lines.length > 0)
-                {
-                    String content = line.substring(1);
-                    for (String otherLine : lines)
-                    {
-                        if (otherLine.startsWith("+") && otherLine.substring(1).equals(content))
-                        {
-                            throw new IllegalArgumentException(
-                                "Invalid diff: '-" + content.substring(0, Math.min(50, content.length())) + 
-                                "...' and '+" + content.substring(0, Math.min(50, content.length())) + 
-                                "...' are IDENTICAL. There is no actual change.\n" +
-                                "Please ensure '-' line contains the OLD content and '+' line contains the NEW content."
-                            );
-                        }
-                    }
-                }
             }
+            // Note: We don't check for identical '-' and '+' lines here because 
+            // applySimpleReplacementDiff will automatically skip them.
         }
         
         /**
@@ -866,6 +865,7 @@ public class Example25ComplexReActDebugFixTest
             String updated = original;
             String pendingRemoved = null;
             int replacedCount = 0;
+            int skippedCount = 0;
             List<String> unmatchedOldLines = new ArrayList<>();
             for (String line : lines)
             {
@@ -877,6 +877,15 @@ public class Example25ComplexReActDebugFixTest
                 if (line.startsWith("+") && pendingRemoved != null)
                 {
                     String added = line.substring(1);
+                    
+                    // Skip if old and new content are identical (no actual change)
+                    if (pendingRemoved.equals(added))
+                    {
+                        skippedCount++;
+                        pendingRemoved = null;
+                        continue;
+                    }
+                    
                     int index = updated.indexOf(pendingRemoved);
                     if (index >= 0)
                     {
@@ -897,6 +906,14 @@ public class Example25ComplexReActDebugFixTest
             }
             if (replacedCount == 0)
             {
+                if (skippedCount > 0 && unmatchedOldLines.isEmpty())
+                {
+                    throw new IllegalArgumentException(
+                        "Diff contains only identical '-old' and '+new' pairs. No actual changes detected.\n" +
+                        "Please ensure your diff has lines that actually differ between '-' and '+'."
+                    );
+                }
+                
                 StringBuilder errorMsg = new StringBuilder();
                 errorMsg.append("Diff failed: content not found in file.\n\n");
                 errorMsg.append("The following old content was NOT found:\n");

@@ -45,7 +45,8 @@ public class StepByStepRunnerTest
     // Switch model.
     public static final String API_KEY_NAME = "MODEL_SCOPE_API_KEY";
 //        public static final String API_KEY_NAME = "VOLCENGINE_API_KEY";
-    private static final String MODEL = "Qwen/Qwen3-4B";
+//    private static final String MODEL = "Qwen/Qwen3-4B";
+    private static final String MODEL = "Qwen/Qwen3.5-27B";
 //        private static final String MODEL = "doubao-seed-code-preview-251028";
     private static final Path INPUT_FILE = Path.of("src", "test", "resources", "inputs", "InvoiceSummaryEngine.py");
     private static final Path INPUT_VERIFIER_FILE = Path.of("src", "test", "resources", "inputs", "InvoiceSummaryEngineVerifier.py");
@@ -67,7 +68,7 @@ public class StepByStepRunnerTest
         RuntimeOs runtimeOs = detectRuntimeOs();
 //        Path workspace = Path.of("src", "test", "resources", "outputs", "react-agent", "example25");
         Path workspace = Path.of("D:\\DinoStark\\Projects\\CodeSpaces\\CodeRaider\\GenericAgent\\generic-agent-core\\src\\test\\resources\\outputs\\react-agent\\example25");
-        resetWorkspace(workspace);
+        Path targetFile = resetWorkspace(workspace);
 
         ToolRegistry toolRegistry = new ToolRegistry();
         toolRegistry.register(createShellTool());
@@ -86,19 +87,33 @@ public class StepByStepRunnerTest
 
 //        logSourceSnapshot(targetFile, "INITIAL_SOURCE");
 
+        String behaviorOutput = runBehaviorVerification(runtimeOs, workspace);
+        System.out.println("INITIAL_VERIFICATION: " + behaviorOutput.trim());
+
+        ContextResult investigatorResult = runner.chatClient("react25-investigator")
+            .prompt()
+            .stream(true)
+            .user(buildInvestigatorPrompt(runtimeOs, workspace, behaviorOutput))
+            .runConfiguration(EXAMPLE_RUN_CONFIGURATION)
+            .runHooks(ExampleSupport.noopHooks())
+            .call()
+            .contextResult();
+
+        System.out.println("INVESTIGATOR_OUTPUT: " + investigatorResult.getFinalOutput());
+
         for (int attempt = 1; attempt <= 5; attempt++)
         {
-            String behaviorOutput = runBehaviorVerification(runtimeOs, workspace);
-
-//            String sourceSnapshot = Files.readString(targetFile);
-            ContextResult investigatorResult = runner.chatClient("react25-investigator")
+            String sourceSnapshot = Files.readString(targetFile);
+            ContextResult fixerResult = runner.chatClient("react25-fixer")
                 .prompt()
                 .stream(true)
-                .user(buildInvestigatorPrompt(runtimeOs, workspace, behaviorOutput))
+                .user(buildFixerPrompt(runtimeOs, workspace, attempt, behaviorOutput, investigatorResult.getFinalOutput(), sourceSnapshot))
                 .runConfiguration(EXAMPLE_RUN_CONFIGURATION)
                 .runHooks(ExampleSupport.noopHooks())
                 .call()
                 .contextResult();
+
+            System.out.println("FIXER_ATTEMPT_" + attempt + "_OUTPUT: " + fixerResult.getFinalOutput());
 
             behaviorOutput = runBehaviorVerification(runtimeOs, workspace);
             System.out.println("ATTEMPT_" + attempt + "_VERIFICATION: " + behaviorOutput.trim());
@@ -317,21 +332,32 @@ public class StepByStepRunnerTest
         return """
             Attempt %d to fix InvoiceSummaryEngine.py.
 
-            Investigator findings:
+            === CRITICAL INSTRUCTIONS ===
+            The investigator has already identified all the bugs. Your job is to EXECUTE the fixes, not re-analyze.
+            
+            1. Read the investigator's findings below carefully.
+            2. Apply ALL fixes in ONE or TWO apply_patch calls maximum.
+            3. Each patch must contain the EXACT lines to change (not comments, but actual code).
+            4. After patching, run the verifier immediately.
+            5. If the first patch attempt fails, re-read the file and try once more with correct content.
+
+            === INVESTIGATOR FINDINGS (EXECUTE THESE FIXES) ===
             %s
 
-            Required behavior contract:
+            === REQUIRED BEHAVIOR CONTRACT ===
             %s
 
-            Current verification status:
+            === CURRENT VERIFICATION STATUS ===
             %s
 
-            Current code:
+            === CURRENT CODE ===
             %s
 
-            Fix all bugs and verify with: %s
-            Target: output should contain BEHAVIOR_OK
-            Do not stop at partial fixes. Keep patching until both caseA and caseB pass.
+            === EXECUTION STEPS ===
+            1. Apply patches for ALL bugs identified by investigator (use apply_patch tool)
+            2. Run verifier: %s
+            3. If output shows BEHAVIOR_OK, handoff to reviewer
+            4. If still failing, read file again and apply one more targeted fix
 
             OS: %s
             Workspace: %s
@@ -707,46 +733,30 @@ public class StepByStepRunnerTest
             }
             
             String[] lines = diff.split("\\R", -1);
+            
             for (String line : lines)
             {
                 if (line.isBlank()) continue;
                 
                 // Check for lines that look like code but don't start with - or +
-                // These are likely malformed diff content
                 if (!line.startsWith("-") && !line.startsWith("+"))
                 {
-                    // Lines starting with space are context lines, which are OK for unified diff
-                    // But for simple diff, they indicate a malformed diff
                     if (line.startsWith(" ") || line.startsWith("\t"))
                     {
                         throw new IllegalArgumentException(
-                            "Invalid diff format: line '" + line.substring(0, Math.min(40, line.length())) + 
-                            "...' starts with whitespace but is not a valid context line.\n" +
-                            "For simple replacement diff, ALL lines must start with '-' or '+'.\n" +
-                            "Please check your diff format and ensure proper '-old' and '+new' pairs."
+                            "INVALID DIFF FORMAT!\n\n" +
+                            "Problem: Line '" + line.substring(0, Math.min(40, line.length())) + "...' starts with whitespace.\n\n" +
+                            "SOLUTION: For simple diff, EVERY line must start with '-' (old) or '+' (new).\n\n" +
+                            "Example of CORRECT diff to change a return value:\n" +
+                            "  -        return 0.18\n" +
+                            "  +        return 0.08\n\n" +
+                            "Do NOT include lines that don't change. Only include the ACTUAL lines being modified."
                         );
                     }
                 }
-                
-                // Check for - and + lines with identical content (no actual change)
-                if (line.startsWith("-") && lines.length > 0)
-                {
-                    String content = line.substring(1);
-                    // Look for matching + line
-                    for (String otherLine : lines)
-                    {
-                        if (otherLine.startsWith("+") && otherLine.substring(1).equals(content))
-                        {
-                            throw new IllegalArgumentException(
-                                "Invalid diff: '-" + content.substring(0, Math.min(50, content.length())) + 
-                                "...' and '+" + content.substring(0, Math.min(50, content.length())) + 
-                                "...' are IDENTICAL. There is no actual change.\n" +
-                                "Please ensure '-' line contains the OLD content and '+' line contains the NEW content."
-                            );
-                        }
-                    }
-                }
             }
+            // Note: We don't check for identical '-' and '+' lines here because 
+            // applySimpleReplacementDiff will automatically skip them.
         }
         
         /**
@@ -845,6 +855,7 @@ public class StepByStepRunnerTest
             String updated = original;
             String pendingRemoved = null;
             int replacedCount = 0;
+            int skippedCount = 0;
             List<String> unmatchedOldLines = new ArrayList<>();
             for (String line : lines)
             {
@@ -856,6 +867,15 @@ public class StepByStepRunnerTest
                 if (line.startsWith("+") && pendingRemoved != null)
                 {
                     String added = line.substring(1);
+                    
+                    // Skip if old and new content are identical (no actual change)
+                    if (pendingRemoved.equals(added))
+                    {
+                        skippedCount++;
+                        pendingRemoved = null;
+                        continue;
+                    }
+                    
                     int index = updated.indexOf(pendingRemoved);
                     if (index >= 0)
                     {
@@ -877,13 +897,21 @@ public class StepByStepRunnerTest
             }
             if (replacedCount == 0)
             {
+                // If we skipped some pairs but had no actual changes
+                if (skippedCount > 0 && unmatchedOldLines.isEmpty())
+                {
+                    throw new IllegalArgumentException(
+                        "Diff contains only identical '-old' and '+new' pairs. No actual changes detected.\n" +
+                        "Please ensure your diff has lines that actually differ between '-' and '+'."
+                    );
+                }
+                
                 StringBuilder errorMsg = new StringBuilder();
                 errorMsg.append("Diff failed: content not found in file.\n\n");
                 errorMsg.append("The following old content was NOT found:\n");
                 for (int i = 0; i < Math.min(3, unmatchedOldLines.size()); i++)
                 {
                     String unmatched = unmatchedOldLines.get(i);
-                    // Truncate long lines
                     String display = unmatched.length() > 100 ? unmatched.substring(0, 100) + "..." : unmatched;
                     errorMsg.append("  \"").append(display).append("\"\n");
                 }
