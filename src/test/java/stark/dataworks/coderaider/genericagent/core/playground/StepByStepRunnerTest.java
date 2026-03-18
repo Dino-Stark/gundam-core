@@ -48,7 +48,7 @@ public class StepByStepRunnerTest
     private static final Path INPUT_FILE = Path.of("src", "test", "resources", "inputs", "InvoiceSummaryEngine.py");
     private static final Path INPUT_VERIFIER_FILE = Path.of("src", "test", "resources", "inputs", "InvoiceSummaryEngineVerifier.py");
     private static final RunConfiguration EXAMPLE_RUN_CONFIGURATION =
-        new RunConfiguration(8, null, 0.0, 1024, "auto", "text", Map.of());
+        new RunConfiguration(20, null, 0.0, 1024, "auto", "text", Map.of());
 
     @Test
     public void run() throws IOException
