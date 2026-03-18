@@ -45,8 +45,8 @@ public class StepByStepRunnerTest
     //    public static final String API_KEY_NAME = "VOLCENGINE_API_KEY";
     private static final String MODEL = "Qwen/Qwen3-4B";
     //    private static final String MODEL = "doubao-seed-code-preview-251028";
-    private static final Path INPUT_FILE = Path.of("src", "test", "resources", "inputs", "InvoiceSummaryEngine.java");
-    private static final Path INPUT_VERIFIER_FILE = Path.of("src", "test", "resources", "inputs", "InvoiceSummaryEngineVerifier.java");
+    private static final Path INPUT_FILE = Path.of("src", "test", "resources", "inputs", "InvoiceSummaryEngine.py");
+    private static final Path INPUT_VERIFIER_FILE = Path.of("src", "test", "resources", "inputs", "InvoiceSummaryEngineVerifier.py");
     private static final RunConfiguration EXAMPLE_RUN_CONFIGURATION =
         new RunConfiguration(4, null, 0.0, 1024, "auto", "text", Map.of());
 
@@ -130,9 +130,9 @@ public class StepByStepRunnerTest
                 });
         }
         Files.createDirectories(workspace);
-        Path targetFile = workspace.resolve("InvoiceSummaryEngine.java");
+        Path targetFile = workspace.resolve("InvoiceSummaryEngine.py");
         Files.writeString(targetFile, Files.readString(INPUT_FILE));
-        stageVerifierSource(workspace.resolve("InvoiceSummaryEngineVerifier.java"));
+        stageVerifierSource(workspace.resolve("InvoiceSummaryEngineVerifier.py"));
         return targetFile;
     }
 
@@ -154,7 +154,7 @@ public class StepByStepRunnerTest
         def.setModel(MODEL);
         def.setReactEnabled(true);
         def.setSystemPrompt("""
-            You are a workflow coordinator for Java debugging.
+            You are a workflow coordinator for code debugging.
 
             Build a concise execution plan and enforce this order:
             1) Investigator finds concrete bug evidence
@@ -179,7 +179,7 @@ public class StepByStepRunnerTest
         def.setModel(MODEL);
         def.setReactEnabled(true);
         def.setSystemPrompt("""
-            You are a Java bug investigator.
+            You are a code bug investigator.
 
             Inspect source and verifier output to identify root causes.
             Read the file(s) by the local_shell tool before your investigation.
@@ -208,10 +208,10 @@ public class StepByStepRunnerTest
         def.setModel(MODEL);
         def.setReactEnabled(true);
         def.setSystemPrompt("""
-            You are a Java code fixer.
+            You are a code code fixer.
 
             Rules:
-            - Patch only InvoiceSummaryEngine.java
+            - Patch only InvoiceSummaryEngine.py
             - Output the plan for fixing based on the investigation before
             - Fix the root causes from investigator evidence based on the plan
             - Run verification after patching
@@ -240,7 +240,7 @@ public class StepByStepRunnerTest
         def.setModel(MODEL);
         def.setReactEnabled(true);
         def.setSystemPrompt("""
-            You are a strict verifier for Java bug-fix tasks.
+            You are a strict verifier for code bug-fix tasks.
 
             Validate with runtime evidence. PASS only when output contains BEHAVIOR_OK.
 
@@ -258,7 +258,7 @@ public class StepByStepRunnerTest
     private static String buildCoordinatorPrompt(RuntimeOs runtimeOs, Path workspace, String behaviorOutput)
     {
         return """
-            Build a concise execution plan for fixing InvoiceSummaryEngine.java.
+            Build a concise execution plan for fixing InvoiceSummaryEngine.py.
 
             Current verification output:
             %s
@@ -279,7 +279,7 @@ public class StepByStepRunnerTest
     private static String buildInvestigatorPrompt(RuntimeOs runtimeOs, Path workspace, String behaviorOutput)
     {
         return """
-            Investigate root causes in InvoiceSummaryEngine.java.
+            Investigate root causes in InvoiceSummaryEngine.py.
 
             Current verification output:
             %s
@@ -294,7 +294,7 @@ public class StepByStepRunnerTest
 
             Steps:
             1) CD into the workspace.
-            2) Print InvoiceSummaryEngine.java
+            2) Print InvoiceSummaryEngine.py
             3) Compile and run verifier
             4) Confirm or reject each likely bug category with evidence
             5) Produce a concrete fixer checklist
@@ -304,14 +304,14 @@ public class StepByStepRunnerTest
             File print command: %s
             Verify command: %s
             """.formatted(behaviorOutput.trim(), expectedBehaviorContract(), runtimeOs.displayName, workspace,
-            runtimeOs.printFileCommand(workspace, "InvoiceSummaryEngine.java"), runtimeOs.verifyCommand(workspace));
+            runtimeOs.printFileCommand(workspace, "InvoiceSummaryEngine.py"), runtimeOs.verifyCommand(workspace));
     }
 
     private static String buildFixerPrompt(RuntimeOs runtimeOs, Path workspace, int attempt,
                                            String behaviorOutput, String investigationOutput, String sourceSnapshot)
     {
         return """
-            Attempt %d to fix InvoiceSummaryEngine.java.
+            Attempt %d to fix InvoiceSummaryEngine.py.
 
             Investigator findings:
             %s
@@ -348,7 +348,7 @@ public class StepByStepRunnerTest
     private static String buildReviewerPrompt(RuntimeOs runtimeOs, Path workspace, String fixerOutput, String behaviorOutput)
     {
         return """
-            Review the fix result for InvoiceSummaryEngine.java.
+            Review the fix result for InvoiceSummaryEngine.py.
 
             Fixer output:
             %s
@@ -428,9 +428,9 @@ public class StepByStepRunnerTest
         return switch (runtimeOs)
         {
             case WINDOWS -> new ProcessBuilder("cmd", "/c",
-                "cd /d \"" + workspace + "\" && javac InvoiceSummaryEngine.java InvoiceSummaryEngineVerifier.java && java InvoiceSummaryEngineVerifier");
+                "cd /d \"" + workspace + "\" && python InvoiceSummaryEngineVerifier.py");
             case MACOS, LINUX -> new ProcessBuilder("bash", "-lc",
-                "cd '" + workspace + "' && javac InvoiceSummaryEngine.java InvoiceSummaryEngineVerifier.java && java InvoiceSummaryEngineVerifier");
+                "cd '" + workspace + "' && python InvoiceSummaryEngineVerifier.py");
         };
     }
 
@@ -463,7 +463,7 @@ public class StepByStepRunnerTest
 
         private String verifyCommand(Path workspace)
         {
-            return "javac InvoiceSummaryEngine.java InvoiceSummaryEngineVerifier.java && java InvoiceSummaryEngineVerifier";
+            return "python InvoiceSummaryEngineVerifier.py";
         }
 
         private String printFileCommand(Path workspace, String fileName)
