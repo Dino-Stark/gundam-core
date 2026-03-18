@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -575,6 +576,13 @@ public class Example25ComplexReActDebugFixTest
                 }
                 String original = Files.readString(path);
                 String updated = applySmartDiff(original, diff);
+                
+                // Critical: Check if any actual changes were applied
+                if (updated.equals(original))
+                {
+                    return ApplyPatchResult.failed(buildNoChangeAppliedError(diff));
+                }
+                
                 Files.writeString(path, updated);
                 return ApplyPatchResult.completed("Updated " + operation.getPath());
             }
@@ -582,6 +590,34 @@ public class Example25ComplexReActDebugFixTest
             {
                 return ApplyPatchResult.failed("Update failed: " + ex.getMessage());
             }
+        }
+        
+        private static String buildNoChangeAppliedError(String diff)
+        {
+            StringBuilder errorMsg = new StringBuilder();
+            errorMsg.append("Diff failed: NO CHANGES were applied to the file.\n\n");
+            errorMsg.append("Your diff content:\n");
+            if (diff != null)
+            {
+                String[] lines = diff.split("\\R", -1);
+                int shown = 0;
+                for (String line : lines)
+                {
+                    if (shown >= 6) break;
+                    if (line.startsWith("-") || line.startsWith("+"))
+                    {
+                        String display = line.length() > 80 ? line.substring(0, 80) + "..." : line;
+                        errorMsg.append("  ").append(display).append("\n");
+                        shown++;
+                    }
+                }
+            }
+            errorMsg.append("\nPossible reasons:\n");
+            errorMsg.append("1. The '-' content does NOT exist in the file (check exact spacing/indentation).\n");
+            errorMsg.append("2. The '-' and '+' lines are IDENTICAL (no actual change).\n");
+            errorMsg.append("3. The file was already modified and content has changed.\n");
+            errorMsg.append("\nTo fix: Read the file again, then provide a correct diff.\n");
+            return errorMsg.toString();
         }
 
         @Override
@@ -666,18 +702,127 @@ public class Example25ComplexReActDebugFixTest
 
         private static String applySmartDiff(String original, String diff)
         {
+            // Validate diff format first
+            validateDiffFormat(diff);
+            
             if (looksLikeReplacementOnlyDiff(diff))
             {
                 return applySimpleReplacementDiff(original, diff);
             }
             try
             {
-                return ApplyPatchTool.applyDiff(original, diff);
+                String result = ApplyPatchTool.applyDiff(original, diff);
+                // Verify the result is valid (not corrupted)
+                if (result != null && !result.equals(original))
+                {
+                    validateResultNotCorrupted(original, result);
+                }
+                return result;
             }
             catch (Exception ignored)
             {
                 return applySimpleReplacementDiff(original, diff);
             }
+        }
+        
+        /**
+         * Validate diff format to catch common mistakes.
+         */
+        private static void validateDiffFormat(String diff)
+        {
+            if (diff == null || diff.isBlank())
+            {
+                throw new IllegalArgumentException("Empty diff.");
+            }
+            
+            String[] lines = diff.split("\\R", -1);
+            for (String line : lines)
+            {
+                if (line.isBlank()) continue;
+                
+                // Check for lines that look like code but don't start with - or +
+                if (!line.startsWith("-") && !line.startsWith("+"))
+                {
+                    if (line.startsWith(" ") || line.startsWith("\t"))
+                    {
+                        throw new IllegalArgumentException(
+                            "Invalid diff format: line '" + line.substring(0, Math.min(40, line.length())) + 
+                            "...' starts with whitespace but is not a valid context line.\n" +
+                            "For simple replacement diff, ALL lines must start with '-' or '+'.\n" +
+                            "Please check your diff format and ensure proper '-old' and '+new' pairs."
+                        );
+                    }
+                }
+                
+                // Check for - and + lines with identical content (no actual change)
+                if (line.startsWith("-") && lines.length > 0)
+                {
+                    String content = line.substring(1);
+                    for (String otherLine : lines)
+                    {
+                        if (otherLine.startsWith("+") && otherLine.substring(1).equals(content))
+                        {
+                            throw new IllegalArgumentException(
+                                "Invalid diff: '-" + content.substring(0, Math.min(50, content.length())) + 
+                                "...' and '+" + content.substring(0, Math.min(50, content.length())) + 
+                                "...' are IDENTICAL. There is no actual change.\n" +
+                                "Please ensure '-' line contains the OLD content and '+' line contains the NEW content."
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        
+        /**
+         * Check if the result file is corrupted (e.g., structure destroyed).
+         */
+        private static void validateResultNotCorrupted(String original, String result)
+        {
+            long originalFuncCount = countOccurrences(original, "def ");
+            long resultFuncCount = countOccurrences(result, "def ");
+            
+            if (resultFuncCount < originalFuncCount)
+            {
+                throw new IllegalArgumentException(
+                    "Diff would corrupt the file: function definitions would be lost.\n" +
+                    "Original had " + originalFuncCount + " function(s), result would have " + resultFuncCount + ".\n" +
+                    "Please verify your diff is correct and targets the right lines."
+                );
+            }
+            
+            String[] resultLines = result.split("\\R", -1);
+            if (resultLines.length > 0)
+            {
+                String firstLine = resultLines[0];
+                if (firstLine.startsWith("    ") || firstLine.startsWith("\t"))
+                {
+                    if (original.split("\\R", -1)[0].startsWith("import ") || 
+                        original.split("\\R", -1)[0].startsWith("def ") ||
+                        original.split("\\R", -1)[0].startsWith("class ") ||
+                        original.split("\\R", -1)[0].startsWith("#") ||
+                        original.split("\\R", -1)[0].isBlank())
+                    {
+                        throw new IllegalArgumentException(
+                            "Diff would corrupt the file: first line would be incorrectly indented.\n" +
+                            "First line of result: '" + firstLine.substring(0, Math.min(50, firstLine.length())) + "...'\n" +
+                            "Please verify your diff targets the correct location in the file."
+                        );
+                    }
+                }
+            }
+        }
+        
+        private static long countOccurrences(String text, String substring)
+        {
+            long count = 0;
+            int index = 0;
+            while ((index = text.indexOf(substring, index)) != -1)
+            {
+                count++;
+                index += substring.length();
+            }
+            return count;
         }
 
         private static boolean looksLikeReplacementOnlyDiff(String diff)
@@ -721,6 +866,7 @@ public class Example25ComplexReActDebugFixTest
             String updated = original;
             String pendingRemoved = null;
             int replacedCount = 0;
+            List<String> unmatchedOldLines = new ArrayList<>();
             for (String line : lines)
             {
                 if (line.startsWith("-"))
@@ -737,6 +883,10 @@ public class Example25ComplexReActDebugFixTest
                         updated = updated.substring(0, index) + added + updated.substring(index + pendingRemoved.length());
                         replacedCount++;
                     }
+                    else
+                    {
+                        unmatchedOldLines.add(pendingRemoved);
+                    }
                     pendingRemoved = null;
                     continue;
                 }
@@ -747,7 +897,20 @@ public class Example25ComplexReActDebugFixTest
             }
             if (replacedCount == 0)
             {
-                throw new IllegalArgumentException("Simple replacement diff did not match any content.");
+                StringBuilder errorMsg = new StringBuilder();
+                errorMsg.append("Diff failed: content not found in file.\n\n");
+                errorMsg.append("The following old content was NOT found:\n");
+                for (int i = 0; i < Math.min(3, unmatchedOldLines.size()); i++)
+                {
+                    String unmatched = unmatchedOldLines.get(i);
+                    String display = unmatched.length() > 100 ? unmatched.substring(0, 100) + "..." : unmatched;
+                    errorMsg.append("  \"").append(display).append("\"\n");
+                }
+                errorMsg.append("\nTo fix this:\n");
+                errorMsg.append("1. Read the file again to get its CURRENT content.\n");
+                errorMsg.append("2. Compare your diff with the actual file content.\n");
+                errorMsg.append("3. Provide a new diff that matches EXACTLY what's in the file (including whitespace).\n");
+                throw new IllegalArgumentException(errorMsg.toString());
             }
             return updated;
         }

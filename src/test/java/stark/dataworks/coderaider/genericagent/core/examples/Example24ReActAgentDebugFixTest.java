@@ -467,6 +467,13 @@ public class Example24ReActAgentDebugFixTest
                 }
                 String original = Files.readString(path);
                 String updated = ApplyPatchTool.applyDiff(original, operation.getDiff());
+                
+                // Check if any actual changes were applied
+                if (updated.equals(original))
+                {
+                    return ApplyPatchResult.failed(buildDiffNotMatchError(operation.getDiff()));
+                }
+                
                 Files.writeString(path, updated);
                 return ApplyPatchResult.completed("Updated " + operation.getPath());
             }
@@ -474,6 +481,33 @@ public class Example24ReActAgentDebugFixTest
             {
                 return ApplyPatchResult.failed("Update failed: " + ex.getMessage());
             }
+        }
+        
+        private static String buildDiffNotMatchError(String diff)
+        {
+            StringBuilder errorMsg = new StringBuilder();
+            errorMsg.append("Diff failed: content not found in file. No changes were applied.\n\n");
+            errorMsg.append("The diff you provided:\n");
+            if (diff != null)
+            {
+                String[] lines = diff.split("\\R", -1);
+                int shown = 0;
+                for (String line : lines)
+                {
+                    if (shown >= 5) break;
+                    if (line.startsWith("-") || line.startsWith("+"))
+                    {
+                        String display = line.length() > 100 ? line.substring(0, 100) + "..." : line;
+                        errorMsg.append("  ").append(display).append("\n");
+                        shown++;
+                    }
+                }
+            }
+            errorMsg.append("\nTo fix this:\n");
+            errorMsg.append("1. Read the file again to get its CURRENT content.\n");
+            errorMsg.append("2. Compare your diff with the actual file content.\n");
+            errorMsg.append("3. Provide a new diff that matches EXACTLY what's in the file (including whitespace).\n");
+            return errorMsg.toString();
         }
 
         @Override
