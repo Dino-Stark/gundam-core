@@ -480,7 +480,16 @@ public class StepByStepRunnerTest
     {
         ToolDefinition definition = new ToolDefinition(
             "local_shell",
-            "Execute a local shell command and return stdout/stderr.",
+            """
+            Execute a local shell command and return stdout/stderr.
+            
+            IMPORTANT: Each invocation runs in an independent process. 'cd' command does NOT persist across calls.
+            To operate on a specific directory, combine 'cd' with your command in a single invocation using '&&'.
+            
+            Examples:
+            - Windows: cd /d "C:\\path\\to\\dir" && dir
+            - Unix: cd /path/to/dir && ls -la
+            """,
             List.of(new ToolParameterSchema("command", "string", true, "Shell command to execute")));
         return new LocalShellTool(definition);
     }
