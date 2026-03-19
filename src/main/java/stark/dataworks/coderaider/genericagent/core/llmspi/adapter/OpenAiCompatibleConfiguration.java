@@ -63,4 +63,9 @@ public class OpenAiCompatibleConfiguration
     {
         return new OpenAiCompatibleConfiguration("modelscope", "https://api-inference.modelscope.cn/v1", apiKey, model, Duration.ofSeconds(120), Map.of());
     }
+
+    public static OpenAiCompatibleConfiguration nvidia(String apiKey, String model)
+    {
+        return new OpenAiCompatibleConfiguration("nvidia", "https://integrate.api.nvidia.com/v1", apiKey, model, Duration.ofSeconds(120), Map.of());
+    }
 }
