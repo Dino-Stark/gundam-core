@@ -235,6 +235,7 @@ public class StepByStepRunnerTest
             - Run verification after patching
             - Stop only when verification output contains BEHAVIOR_OK
             - Follow the coding style
+            - Please follow the syntax (.py, Python) when generating code for fixing
 
             OS: %s
             Workspace: %s
@@ -851,77 +852,94 @@ public class StepByStepRunnerTest
                 throw new IllegalArgumentException("Empty diff.");
             }
 
-            String[] lines = diff.split("\\R", -1);
-            String updated = original;
-            String pendingRemoved = null;
-            int replacedCount = 0;
+            // Parse diff into pairs of (old, new)
+            List<String[]> diffPairs = new ArrayList<>();
+            String[] diffLines = diff.split("\\R", -1);
+            String pendingOld = null;
             int skippedCount = 0;
-            List<String> unmatchedOldLines = new ArrayList<>();
-            for (String line : lines)
+            
+            for (String line : diffLines)
             {
                 if (line.startsWith("-"))
                 {
-                    pendingRemoved = line.substring(1);
+                    pendingOld = line.substring(1);
                     continue;
                 }
-                if (line.startsWith("+") && pendingRemoved != null)
+                if (line.startsWith("+") && pendingOld != null)
                 {
-                    String added = line.substring(1);
-                    
-                    // Skip if old and new content are identical (no actual change)
-                    if (pendingRemoved.equals(added))
+                    String newContent = line.substring(1);
+                    // Skip if old and new are identical
+                    if (pendingOld.equals(newContent))
                     {
                         skippedCount++;
-                        pendingRemoved = null;
-                        continue;
-                    }
-                    
-                    int index = updated.indexOf(pendingRemoved);
-                    if (index >= 0)
-                    {
-                        updated = updated.substring(0, index) + added + updated.substring(index + pendingRemoved.length());
-                        replacedCount++;
                     }
                     else
                     {
-                        // Record the old content that was not found in the file
-                        unmatchedOldLines.add(pendingRemoved);
+                        diffPairs.add(new String[]{pendingOld, newContent});
                     }
-                    pendingRemoved = null;
+                    pendingOld = null;
                     continue;
                 }
                 if (!line.isBlank())
                 {
-                    pendingRemoved = null;
+                    pendingOld = null;
                 }
             }
-            if (replacedCount == 0)
+            
+            if (diffPairs.isEmpty())
             {
-                // If we skipped some pairs but had no actual changes
-                if (skippedCount > 0 && unmatchedOldLines.isEmpty())
+                if (skippedCount > 0)
                 {
                     throw new IllegalArgumentException(
-                        "Diff contains only identical '-old' and '+new' pairs. No actual changes detected.\n" +
-                        "Please ensure your diff has lines that actually differ between '-' and '+'."
+                        "Diff contains only identical '-old' and '+new' pairs. No actual changes detected."
                     );
                 }
+                throw new IllegalArgumentException("No valid diff pairs found.");
+            }
+
+            // Apply replacements LINE-BY-LINE for accuracy
+            String[] originalLines = original.split("\\R", -1);
+            List<String> resultLines = new ArrayList<>();
+            for (String originalLine : originalLines)
+            {
+                String currentLine = originalLine;
                 
-                StringBuilder errorMsg = new StringBuilder();
-                errorMsg.append("Diff failed: content not found in file.\n\n");
-                errorMsg.append("The following old content was NOT found:\n");
-                for (int i = 0; i < Math.min(3, unmatchedOldLines.size()); i++)
+                // Try to match and replace for each diff pair
+                for (String[] pair : diffPairs)
                 {
-                    String unmatched = unmatchedOldLines.get(i);
-                    String display = unmatched.length() > 100 ? unmatched.substring(0, 100) + "..." : unmatched;
+                    String oldContent = pair[0];
+                    String newContent = pair[1];
+                    
+                    // Check if this line contains the old content
+                    int idx = currentLine.indexOf(oldContent);
+                    if (idx >= 0)
+                    {
+                        // Verify this is a reasonable match (not a partial match)
+                        // The old content should match a substantial part of the line
+                        currentLine = currentLine.substring(0, idx) + newContent + currentLine.substring(idx + oldContent.length());
+                    }
+                }
+                resultLines.add(currentLine);
+            }
+            
+            // Check if any changes were made
+            String result = String.join("\n", resultLines);
+            if (result.equals(original))
+            {
+                StringBuilder errorMsg = new StringBuilder();
+                errorMsg.append("Diff failed: NO changes were applied.\n\n");
+                errorMsg.append("The following content was NOT found in any line:\n");
+                for (int i = 0; i < Math.min(3, diffPairs.size()); i++)
+                {
+                    String old = diffPairs.get(i)[0];
+                    String display = old.length() > 80 ? old.substring(0, 80) + "..." : old;
                     errorMsg.append("  \"").append(display).append("\"\n");
                 }
-                errorMsg.append("\nTo fix this:\n");
-                errorMsg.append("1. Read the file again to get its CURRENT content.\n");
-                errorMsg.append("2. Compare your diff with the actual file content.\n");
-                errorMsg.append("3. Provide a new diff that matches EXACTLY what's in the file (including whitespace).\n");
+                errorMsg.append("\nTo fix: Read the file again and provide exact matching content.");
                 throw new IllegalArgumentException(errorMsg.toString());
             }
-            return updated;
+            
+            return result;
         }
     }
 }
