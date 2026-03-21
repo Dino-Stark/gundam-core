@@ -217,7 +217,7 @@ public class StepByStepRunnerTest
             EXECUTION LOOP:
             Read code → Identify bugs → Generate patches → Apply → Verify → If fails, retry
             
-            IMPORTANT: 
+            IMPORTANT:
             - You are responsible for analyzing code and identifying bugs
             - You are responsible for generating patches
             - You are responsible for verification
