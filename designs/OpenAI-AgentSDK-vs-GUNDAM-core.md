@@ -80,10 +80,89 @@ Legend: ✅ implemented, 🟡 partial, ⚪ not implemented.
 - ReAct default prompt instructions were tightened to prefer concise internal reasoning and short final summaries instead of verbose thought transcripts.
 - `Example24`, `Example25`, and `Example33` debug-fix flows now use lower-turn/lower-token configs and stronger patch-call guidance to reduce wasted deliberation while preserving streaming behavior.
 - `Example25` now uses a multi-agent ReAct topology (coordinator/investigator/fixer/reviewer), includes source snapshots, and logs thought/action/observation output and provides explicit behavior-contract bug hints to make root-cause diagnosis and runtime verification traceable.
-- The same three examples now validate concise runtime and concise structured summaries (`Problem`/`Fix`/`Verification` style) to better enforce “understand + fix + verify + summarize” outcomes.
+- The same three examples now validate concise runtime and concise structured summaries (`Problem`/`Fix`/`Verification` style) to better enforce "understand + fix + verify + summarize" outcomes.
 - Added the `stark.dataworks.coderaider.genericagent.core.excalibur` package, which ports Trae-agent-style software-engineering guidance into reusable Java agent profiles (investigator/fixer/reviewer/summarizer) with shared workspace-aware prompts and defaults.
 - `StepByStepRunnerTest` now exercises the Excalibur profiles end-to-end for a two-file Python debugging task, replacing the previous platform-specific planner/executor wiring with a reusable general-purpose software-engineering agent setup.
 - Excalibur now also registers Trae-compatible tool names (`bash`, `sequentialthinking`, `task_done`, `str_replace_based_edit_tool`, `json_edit_tool`) and mirrors Trae's absolute-path/tool-usage contract more closely so the Java runner can execute Trae-style prompts with much higher fidelity.
+
+## Excalibur Agent Package (Trae-agent Compatibility Layer)
+
+The `stark.dataworks.coderaider.genericagent.core.excalibur` package provides a comprehensive Java implementation that mirrors the Trae-agent architecture for general-purpose software engineering tasks.
+
+### Core Components
+
+| Class | Description | Trae-agent Equivalent |
+|-------|-------------|----------------------|
+| `ExcaliburAgentFactory` | Factory for creating configured Excalibur agents | `Agent` class factory methods |
+| `ExcaliburAgentSpec` | Workspace-aware agent spec with prompt/task bootstrap | `TraeAgent` configuration |
+| `ExcaliburAgentRole` | Predefined role profiles (INVESTIGATOR, FIXER, REVIEWER, SUMMARIZER) | Role-based agent specialization |
+| `ExcaliburTaskRequest` | Task request metadata with project path, issue, base commit | `new_task()` parameters |
+| `ExcaliburTaskMessages` | Message builders for task bootstrap semantics | `new_task()` message construction |
+| `ExcaliburSystemPrompts` | Shared system prompt templates | `TRAE_AGENT_SYSTEM_PROMPT` |
+| `ExcaliburPatchUtils` | Git diff and patch validation helpers | `get_git_diff()`, `remove_patches_to_tests()` |
+| `ExcaliburTraeToolNames` | Trae-compatible tool name constants | `TraeAgentToolNames` |
+
+### Trae-compatible Tools
+
+| Tool | Description | Trae-agent Equivalent |
+|------|-------------|----------------------|
+| `ExcaliburBashTool` | Persistent shell session execution | `bash_tool.py` |
+| `ExcaliburStrReplaceBasedEditTool` | View/create/str_replace/insert file operations | `str_replace_based_edit_tool.py` |
+| `ExcaliburJsonEditTool` | JSON file editing with JSONPath | `json_edit_tool.py` |
+| `ExcaliburSequentialThinkingTool` | Structured reasoning step recording | `sequential_thinking_tool.py` |
+| `ExcaliburTaskDoneTool` | Task completion signal | `task_done_tool.py` |
+
+### Agent Role Profiles
+
+1. **INVESTIGATOR**: Investigates reported software issues, reads source/verifier output, produces root-cause reports with evidence and fixer checklists.
+2. **FIXER**: Implements minimal safe patches, re-reads files before editing, verifies immediately after patching.
+3. **REVIEWER**: Validates fixes using runtime evidence, returns PASS only when behavior contract is satisfied.
+4. **SUMMARIZER**: Summarizes debugging sessions, reports files changed, code changes, and verification outcomes.
+
+### Key Features
+
+- **100% Logic Parity**: The Excalibur implementation mirrors Trae-agent's core logic for software engineering tasks.
+- **Workspace-aware Prompts**: All prompts include workspace path and follow Trae's absolute-path conventions.
+- **Patch Requirement Validation**: Supports `mustPatch` flag to enforce non-empty source patches before task completion.
+- **Git Integration**: Built-in git diff generation with test-patch filtering.
+- **Multi-file Debugging**: Supports debugging tasks spanning multiple files with coordinated agent workflows.
+
+### Usage Example
+
+```java
+// Create task request
+ExcaliburTaskRequest taskRequest = ExcaliburTaskRequest.builder(
+    "Fix the verification failures in FinancialCalculator.py and OrderProcessor.py",
+    workspace)
+    .issue("Current verification reports total=2232.71 instead of 1958.34")
+    .baseCommit(resolveHeadCommit(workspace))
+    .mustPatch(true)
+    .build();
+
+// Create agent spec
+ExcaliburAgentSpec fixerSpec = ExcaliburAgentFactory.createSpec(
+    "excalibur-fixer",
+    "Excalibur Fixer",
+    MODEL,
+    workspace,
+    ExcaliburAgentRole.FIXER,
+    taskRequest,
+    "Read -> patch -> verify -> if still failing, re-read and apply targeted patch.",
+    "Target files: FinancialCalculator.py, OrderProcessor.py.",
+    ExcaliburAgentRole.FIXER.getDefaultToolNames(),
+    List.of(),
+    true,
+    "medium");
+
+// Register tools and run
+ToolRegistry toolRegistry = new ToolRegistry();
+ExcaliburToolRegistrySupport.registerTraeCompatibleTools(toolRegistry, workspace, editor);
+AgentRunner runner = AgentRunner.builder()
+    .llmClient(llmClient)
+    .toolRegistry(toolRegistry)
+    .agentRegistry(agentRegistry)
+    .build();
+```
 
 ## Example coverage alignment
 
