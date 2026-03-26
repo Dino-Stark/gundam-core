@@ -5,10 +5,6 @@ package stark.dataworks.coderaider.genericagent.core.excalibur;
  */
 public final class ExcaliburTaskMessages
 {
-    private ExcaliburTaskMessages()
-    {
-    }
-
     public static String buildInitialUserMessage(ExcaliburTaskRequest request)
     {
         StringBuilder message = new StringBuilder();
