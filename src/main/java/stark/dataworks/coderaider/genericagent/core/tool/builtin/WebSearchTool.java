@@ -32,8 +32,8 @@ public class WebSearchTool extends AbstractBuiltinTool
     /**
      * Initializes WebSearchTool with required runtime dependencies and options.
      *
-     * @param definition       definition object.
-     * @param subscriptionKey  Bing Web Search subscription key.
+     * @param definition      definition object.
+     * @param subscriptionKey Bing Web Search subscription key.
      */
     public WebSearchTool(ToolDefinition definition, String subscriptionKey)
     {

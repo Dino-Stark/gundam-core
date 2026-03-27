@@ -629,10 +629,10 @@ public class AgentRunner
     /**
      * Normalizes and routes an execution error through configured handlers.
      *
-     * @param context       execution context.
-     * @param config        run configuration.
-     * @param error         captured error.
-     * @param memoryPolicy  memory policy.
+     * @param context      execution context.
+     * @param config       run configuration.
+     * @param error        captured error.
+     * @param memoryPolicy memory policy.
      * @return context result.
      */
     private ContextResult handleError(AgentRunnerContext context, RunConfiguration config, RuntimeException error, MemoryLifecyclePolicy memoryPolicy)
@@ -998,10 +998,10 @@ public class AgentRunner
     /**
      * Builds the final run result object.
      *
-     * @param context       execution context.
-     * @param finalOutput   final output.
-     * @param config        run configuration.
-     * @param memoryPolicy  memory policy.
+     * @param context      execution context.
+     * @param finalOutput  final output.
+     * @param config       run configuration.
+     * @param memoryPolicy memory policy.
      * @return context result.
      */
     private ContextResult finalizeResult(AgentRunnerContext context, String finalOutput, RunConfiguration config, MemoryLifecyclePolicy memoryPolicy)

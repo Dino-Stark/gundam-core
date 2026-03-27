@@ -289,7 +289,7 @@ public final class DiffApplier
         {
             String oldStr = removed.get(i);
             String newStr = added.get(i);
-            
+
             // Try exact match first
             int index = result.indexOf(oldStr);
             if (index >= 0)
@@ -297,7 +297,7 @@ public final class DiffApplier
                 result = result.substring(0, index) + newStr + result.substring(index + oldStr.length());
                 continue;
             }
-            
+
             // If no exact match, this diff needs context - return null
             return null;
         }

@@ -29,14 +29,14 @@ public final class ExcaliburJsonEditTool extends AbstractBuiltinTool
     public ExcaliburJsonEditTool(Path workspaceRoot)
     {
         super(new ToolDefinition(
-            "json_edit_tool",
-            "Tool for editing JSON files with JSONPath expressions using Trae-compatible operation/file_path/json_path/value parameters.",
-            List.of(
-                new ToolParameterSchema("operation", "string", true, "One of: view, set, add, remove."),
-                new ToolParameterSchema("file_path", "string", true, "Absolute JSON file path inside the workspace."),
-                new ToolParameterSchema("json_path", "string", false, "JSONPath such as $, $.a.b, $.items[0]."),
-                new ToolParameterSchema("value", "object", false, "Value to set or add."),
-                new ToolParameterSchema("pretty_print", "boolean", false, "Whether to pretty-print JSON output; defaults to true."))),
+                "json_edit_tool",
+                "Tool for editing JSON files with JSONPath expressions using Trae-compatible operation/file_path/json_path/value parameters.",
+                List.of(
+                    new ToolParameterSchema("operation", "string", true, "One of: view, set, add, remove."),
+                    new ToolParameterSchema("file_path", "string", true, "Absolute JSON file path inside the workspace."),
+                    new ToolParameterSchema("json_path", "string", false, "JSONPath such as $, $.a.b, $.items[0]."),
+                    new ToolParameterSchema("value", "object", false, "Value to set or add."),
+                    new ToolParameterSchema("pretty_print", "boolean", false, "Whether to pretty-print JSON output; defaults to true."))),
             ToolCategory.FUNCTION);
         this.workspaceRoot = workspaceRoot.toAbsolutePath().normalize();
     }

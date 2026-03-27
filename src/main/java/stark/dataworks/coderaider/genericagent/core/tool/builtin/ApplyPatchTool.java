@@ -23,9 +23,9 @@ public class ApplyPatchTool implements ITool
     private static final String TOOL_NAME = "apply_patch";
     private static final String TOOL_DESCRIPTION = """
         Apply patch to create, update, or delete a file.
-
+        
         CRITICAL: Use simple diff format with '-' and '+' lines only. Do NOT use 'diff --git', '---', '+++', or '@@' markers.
-
+        
         Example call (update_file):
         {
           "operation": {
@@ -34,14 +34,14 @@ public class ApplyPatchTool implements ITool
             "diff": "-    return 0.18;\\n+    return 0.08;"
           }
         }
-
+        
         Or use flat parameters:
         {
           "type": "update_file",
           "path": "Example.java",
           "diff": "-    return 0.18;\\n+    return 0.08;"
         }
-
+        
         Operation types:
         - create_file: diff contains the full file content (no '-' prefix needed)
         - update_file: diff must have '-' (old) and '+' (new) lines for each change

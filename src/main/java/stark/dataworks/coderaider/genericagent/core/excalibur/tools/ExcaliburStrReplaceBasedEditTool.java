@@ -27,16 +27,16 @@ public final class ExcaliburStrReplaceBasedEditTool extends AbstractBuiltinTool
     public ExcaliburStrReplaceBasedEditTool(Path workspaceRoot)
     {
         super(new ToolDefinition(
-            "str_replace_based_edit_tool",
-            "Custom editing tool for viewing, creating and editing files using Trae-compatible parameters.",
-            List.of(
-                new ToolParameterSchema("command", "string", true, "Allowed options are: view, create, str_replace, insert."),
-                new ToolParameterSchema("file_text", "string", false, "Required content for the create command."),
-                new ToolParameterSchema("insert_line", "integer", false, "Required line number for insert; insertion happens after this 1-based line."),
-                new ToolParameterSchema("new_str", "string", false, "Replacement text for str_replace or inserted text for insert."),
-                new ToolParameterSchema("old_str", "string", false, "Exact unique text to replace for str_replace."),
-                new ToolParameterSchema("path", "string", true, "Absolute path to a file or directory inside the workspace."),
-                new ToolParameterSchema("view_range", "array", false, "Optional [startLine, endLine] range for file views."))),
+                "str_replace_based_edit_tool",
+                "Custom editing tool for viewing, creating and editing files using Trae-compatible parameters.",
+                List.of(
+                    new ToolParameterSchema("command", "string", true, "Allowed options are: view, create, str_replace, insert."),
+                    new ToolParameterSchema("file_text", "string", false, "Required content for the create command."),
+                    new ToolParameterSchema("insert_line", "integer", false, "Required line number for insert; insertion happens after this 1-based line."),
+                    new ToolParameterSchema("new_str", "string", false, "Replacement text for str_replace or inserted text for insert."),
+                    new ToolParameterSchema("old_str", "string", false, "Exact unique text to replace for str_replace."),
+                    new ToolParameterSchema("path", "string", true, "Absolute path to a file or directory inside the workspace."),
+                    new ToolParameterSchema("view_range", "array", false, "Optional [startLine, endLine] range for file views."))),
             ToolCategory.FUNCTION);
         this.workspaceRoot = workspaceRoot.toAbsolutePath().normalize();
     }
@@ -56,9 +56,11 @@ public final class ExcaliburStrReplaceBasedEditTool extends AbstractBuiltinTool
             {
                 case "view" -> success(view(target, input));
                 case "create" -> success(create(target, firstNonBlank(input.get("file_text"), input.get("new_str"))));
-                case "str_replace" -> success(replace(target, stringValue(input.get("old_str")), stringValue(input.get("new_str"))));
+                case "str_replace" ->
+                    success(replace(target, stringValue(input.get("old_str")), stringValue(input.get("new_str"))));
                 case "insert" -> success(insert(target, input.get("insert_line"), stringValue(input.get("new_str"))));
-                default -> failure("Unrecognized command " + command + ". Allowed commands are: view, create, str_replace, insert");
+                default ->
+                    failure("Unrecognized command " + command + ". Allowed commands are: view, create, str_replace, insert");
             };
         }
         catch (Exception ex)

@@ -58,7 +58,7 @@ public class AgentRunnerContext
     /**
      * Initializes AgentRunnerContext with required runtime dependencies and options.
      *
-     * @param currentAgent current agent.
+     * @param currentAgent   current agent.
      * @param contextManager context manager backend.
      */
     public AgentRunnerContext(IAgent currentAgent, IContextManager contextManager)

@@ -20,17 +20,17 @@ public final class ExcaliburSequentialThinkingTool extends AbstractBuiltinTool
     public ExcaliburSequentialThinkingTool()
     {
         super(new ToolDefinition(
-            "sequentialthinking",
-            "Record a structured reasoning step using Trae-compatible sequential thinking fields.",
-            List.of(
-                new ToolParameterSchema("thought", "string", true, "Current thinking step."),
-                new ToolParameterSchema("thought_number", "integer", false, "Current thought number."),
-                new ToolParameterSchema("total_thoughts", "integer", false, "Estimated total thoughts."),
-                new ToolParameterSchema("next_thought_needed", "boolean", false, "Whether more thoughts are needed."),
-                new ToolParameterSchema("is_revision", "boolean", false, "Whether this revises a previous thought."),
-                new ToolParameterSchema("revises_thought", "integer", false, "Revised thought number."),
-                new ToolParameterSchema("branch_from_thought", "integer", false, "Thought to branch from."),
-                new ToolParameterSchema("branch_id", "string", false, "Alternative branch identifier."))),
+                "sequentialthinking",
+                "Record a structured reasoning step using Trae-compatible sequential thinking fields.",
+                List.of(
+                    new ToolParameterSchema("thought", "string", true, "Current thinking step."),
+                    new ToolParameterSchema("thought_number", "integer", false, "Current thought number."),
+                    new ToolParameterSchema("total_thoughts", "integer", false, "Estimated total thoughts."),
+                    new ToolParameterSchema("next_thought_needed", "boolean", false, "Whether more thoughts are needed."),
+                    new ToolParameterSchema("is_revision", "boolean", false, "Whether this revises a previous thought."),
+                    new ToolParameterSchema("revises_thought", "integer", false, "Revised thought number."),
+                    new ToolParameterSchema("branch_from_thought", "integer", false, "Thought to branch from."),
+                    new ToolParameterSchema("branch_id", "string", false, "Alternative branch identifier."))),
             ToolCategory.FUNCTION);
     }
 
