@@ -1,11 +1,14 @@
 package stark.dataworks.coderaider.genericagent.core.excalibur;
 
+import lombok.Getter;
+
 import java.nio.file.Path;
 import java.util.Objects;
 
 /**
  * Task request metadata modeled after trae-agent task bootstrap inputs.
  */
+@Getter
 public final class ExcaliburTaskRequest
 {
     private final String task;
@@ -23,36 +26,6 @@ public final class ExcaliburTaskRequest
         this.baseCommit = builder.baseCommit;
         this.mustPatch = builder.mustPatch;
         this.patchPath = builder.patchPath == null ? null : builder.patchPath.toAbsolutePath().normalize();
-    }
-
-    public String getTask()
-    {
-        return task;
-    }
-
-    public Path getProjectPath()
-    {
-        return projectPath;
-    }
-
-    public String getIssue()
-    {
-        return issue;
-    }
-
-    public String getBaseCommit()
-    {
-        return baseCommit;
-    }
-
-    public boolean isMustPatch()
-    {
-        return mustPatch;
-    }
-
-    public Path getPatchPath()
-    {
-        return patchPath;
     }
 
     public static Builder builder(String task, Path projectPath)
