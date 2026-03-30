@@ -23,13 +23,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
 
 /**
  * 33) Single agent debug workflow for Python files.
  */
 public class Example33PlannerReActDebugFixTest
 {
-    private static final String MODEL = "Qwen/Qwen3-4B";
+    private static final String MODEL = "MiniMax-M2.7";
+    public static final String API_KEY_NAME = "MINIMAX_API_KEY";
     private static final Path INPUT_FILE_1 = Path.of("src", "test", "resources", "inputs", "FinancialCalculator.py");
     private static final Path INPUT_FILE_2 = Path.of("src", "test", "resources", "inputs", "OrderProcessor.py");
     private static final RunConfiguration EXAMPLE_RUN_CONFIGURATION =
@@ -40,10 +42,10 @@ public class Example33PlannerReActDebugFixTest
     {
         long startedAt = System.nanoTime();
         Dotenv env = Dotenv.configure().filename(".env.local").ignoreIfMalformed().ignoreIfMissing().load();
-        String apiKey = env.get("MODEL_SCOPE_API_KEY", System.getenv("MODEL_SCOPE_API_KEY"));
+        String apiKey = env.get(API_KEY_NAME, System.getenv(API_KEY_NAME));
         if (apiKey == null || apiKey.isBlank())
         {
-            System.out.println("Skipping test: MODEL_SCOPE_API_KEY not set");
+            System.out.println("Skipping test: " + API_KEY_NAME + " not set");
             return;
         }
 

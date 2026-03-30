@@ -1,10 +1,13 @@
 package stark.dataworks.coderaider.genericagent.core.excalibur;
 
+import lombok.Getter;
+
 import java.util.List;
 
 /**
  * Predefined Excalibur role profiles for software engineering workflows.
  */
+@Getter
 public enum ExcaliburAgentRole
 {
     INVESTIGATOR(
@@ -63,18 +66,4 @@ public enum ExcaliburAgentRole
         this.rolePrompt = rolePrompt;
     }
 
-    public String getDefaultName()
-    {
-        return defaultName;
-    }
-
-    public List<String> getDefaultToolNames()
-    {
-        return defaultToolNames;
-    }
-
-    public String getRolePrompt()
-    {
-        return rolePrompt;
-    }
 }
