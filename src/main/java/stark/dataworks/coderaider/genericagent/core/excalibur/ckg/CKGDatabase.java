@@ -10,6 +10,9 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Code Knowledge Graph DB.
+ */
 public class CKGDatabase
 {
     private final Map<Path, CKGDatabaseEntry> databases = new HashMap<>();
