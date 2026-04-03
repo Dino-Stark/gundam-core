@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
+// TODO: add support for more languages.
 public class CodeParser
 {
     public static List<FunctionEntry> parseFunctions(String content, Path filePath, String language)
