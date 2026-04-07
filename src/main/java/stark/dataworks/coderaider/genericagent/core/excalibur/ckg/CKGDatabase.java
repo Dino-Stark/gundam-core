@@ -241,6 +241,7 @@ public class CKGDatabase
         return "";
     }
 
+    // Put this method with all supported languages.
     private String getLanguageFromExtension(String ext)
     {
         return switch (ext.toLowerCase())
