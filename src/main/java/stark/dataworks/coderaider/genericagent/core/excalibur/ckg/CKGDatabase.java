@@ -199,7 +199,7 @@ public class CKGDatabase
                     {
                         long size = Files.size(p);
                         long mtime = Files.getLastModifiedTime(p).toMillis();
-                        sb.append(p.toString()).append(size).append(mtime);
+                        sb.append(p).append(size).append(mtime);
                     }
                     catch (IOException ignored)
                     {
