@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * AgentDefinition implements agent definitions and lookup used by runners and handoff resolution.
+ * The {@link AgentDefinition} class implements agent definitions and lookup used by runners and handoff resolution.
  */
 @Data
 @NoArgsConstructor
